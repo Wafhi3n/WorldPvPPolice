@@ -20,3 +20,8 @@ WorldPvPPolice.lua
 
 # Formats lus hors de l'addon : ligne du fil Discord (bot) et message d'addon de guilde.
 WorldPvPPolice_Line.lua
+
+# La mort : fil Discord de la guilde, tueur et cadavre (logique pure + sondes), encart sous la fenetre.
+WorldPvPPolice_Discord.lua
+WorldPvPPolice_Death.lua
+WorldPvPPolice_Panel.lua

@@ -4,8 +4,11 @@
 > mise en forme par l'agent ; D10 à D13 proposées par l'agent, validées par le user le même jour
 > (« je suis d'accord avec tes spec »). **T1 codé le 2026-10-27** (branche `feat/wpp-lignes` de
 > l'addon ET de l'outillage) : `WorldPvPPolice_Line.lua`, critères 1, 2, 3 et 6 tenus en test
-> (`tests/test_wpp_lines.lua`, 44 vérifications, dont une vraie valeur secrète). Rien n'est mesuré en
-> jeu : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les mesures M1 à M7 se font au
+> (`tests/test_wpp_lines.lua`, 44 vérifications, dont une vraie valeur secrète). **T2 codé le même
+> jour**, mêmes branches : `WorldPvPPolice_Discord.lua`, `_Death.lua` (logique pure + sondes),
+> `_Panel.lua` (l'encart) ; critère 5 tenu en test (`tests/test_wpp_death.lua`, 46 vérifications) ;
+> le bouton Appeler n'envoie encore rien (T3). Rien n'est mesuré en
+> jeu : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les mesures M1 à M8 se font au
 > banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
 
@@ -62,6 +65,12 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 
 - **On ne sait pas qui nous a tués** (récap de mort vide, illisible ou valeurs secrètes) : l'encart
   apparaît quand même en extérieur, sans la ligne « Tué par » ; c'est le joueur qui décide d'appeler.
+  Lu sur le coup fatal (`events[1]`) : GUID `Player-…` = joueur ; `Creature-`, `Vehicle-`,
+  `GameObject-` ou dégâts d'environnement (chute, noyade, lave) = pas un joueur, pas d'encart ; un
+  **familier** (`Pet-…`) = inconnu (son maître est peut-être un joueur) : encart.
+- **Le récap arrive après la fenêtre de mort** : il est relu une fois, 1 s plus tard ; un tueur
+  devenu « monstre » referme l'encart.
+- **Mode hardcore** (fenêtre `HARDCORE_DEATH`, mort définitive) : pas d'encart.
 - **Le nom du tueur est une valeur secrète** : on ne le concatène jamais (erreur Lua) ; l'appel part
   sans tueur.
 - **On est ressuscité sans libérer** (pierre d'âme, prêtre) : la fenêtre de mort se ferme, l'encart
@@ -134,6 +143,9 @@ Aucune n'est faite. Le banc demande **un perso de l'autre faction** pour tuer (u
 - **M6** — Les messages d'addon de guilde passent-ils **entre royaumes** de la même guilde ?
 - **M7** — L'encart sous la fenêtre de mort ne casse ni « Libérer », ni la pierre d'âme, ni le récap
   (aucune erreur d'action interdite, taintLog propre).
+- **M8** — Un message d'addon `WPPolice` séparé par des **tabulations** arrive-t-il intact en guilde ?
+  Aucun précédent chez nous (COC et CraftLink séparent par `|` ou `.`). S'il arrive abîmé, un autre
+  séparateur = format v2 ; d'ici là, le contrôle du nombre de champs refuse un message abîmé.
 
 ## Critères d'acceptation
 
@@ -250,9 +262,12 @@ Une tâche = une session, avec son critère.
 
 - ~~**T1** — Lignes et messages : construire / relire, nettoyer, couper (critères 1, 2, 3, 6).~~ FAIT
   le 2026-10-27.
-- **T2** — Mort : détection, lecture du récap, position, encart sous la fenêtre de mort (5, 10).
+- ~~**T2** — Mort : détection, lecture du récap, position, encart sous la fenêtre de mort (5, 10).~~
+  FAIT le 2026-10-27 (critère 10 : au banc).
 - **T3** — Envoi : Appeler / Entrée / Libérer, fil Discord + message de guilde, morts répétées (4).
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
-  `/wpp on|off` (7, 11, 13).
+  `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
+  recopie de l'émetteur du SOS), alors que l'appelant connaît `UnitName("player")` sans royaume :
+  comparer des noms COMPLETS normalisés des deux côtés, sinon l'appelant ne voit jamais qui arrive.
 - **T5** — Bot : sa spec, son dépôt.
-- **T6** — Au lancement : mesures M1 à M7 au banc, puis critères 10 à 13.
+- **T6** — Au lancement : mesures M1 à M8 au banc, puis critères 10 à 13.

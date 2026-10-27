@@ -12,5 +12,16 @@ local T = {
     ["version %s"]                    = "versión %s",
     ["Commandes :"]                   = "Comandos:",
     ["affiche la version"]            = "muestra la versión",
+    -- Encart sous la fenêtre de mort
+    ["Appeler la guilde à l'aide ?"]  = "¿Pedir ayuda a la hermandad?",
+    ["Tueur : %s (%s)"]               = "Asesino: %s (%s)",
+    ["Tueur : %s"]                    = "Asesino: %s",
+    ["Tueur : un joueur"]             = "Asesino: un jugador",
+    ["zone inconnue"]                 = "zona desconocida",
+    ["position inconnue"]             = "posición desconocida",
+    ["Message (facultatif)"]          = "Mensaje (opcional)",
+    ["Appeler"]                       = "Llamar",
+    ["Discord : relié"]               = "Discord: vinculado",
+    ["Discord : non relié (appel en jeu seulement)"] = "Discord: no vinculado (llamada solo en el juego)",
 }
 for k, v in pairs(T) do NS.L[k] = v end
