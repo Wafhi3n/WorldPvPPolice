@@ -249,6 +249,12 @@ la mesure sur Forever.
 - **M8** — Un message d'addon `WPPolice` séparé par des **tabulations** arrive-t-il intact en guilde ?
   Aucun précédent chez nous (COC et CraftLink séparent par `|` ou `.`). S'il arrive abîmé, un autre
   séparateur = format v2 ; d'ici là, le contrôle du nombre de champs refuse un message abîmé.
+- **M9** — Sur les DEUX clients (Forever et PTR Retail) : sous quel nom exact un message d'addon de
+  `GUILD` arrive-t-il (4e argument de `CHAT_MSG_ADDON`) — « Prénom Nom » sur Forever, « Nom-Royaume »
+  sur Retail, comme le suppose l'addon ? Mon propre message de guilde me revient-il (mesuré en groupe
+  seulement, le 2026-10-05) ? Et donc : un « J'arrive » de B fait-il apparaître B dans « Ton appel » de
+  A (`Alert:IsMe`) ? Sans M9, une liste « en route » vide au critère 11 ne dit pas pourquoi.
+  Témoin : `/dump GetUnitName("player", true), UnitFullName("player")` sur A, à comparer.
 
 ## Critères d'acceptation
 
@@ -415,7 +421,9 @@ Une tâche = une session, avec son critère.
   fenêtre un quart de seconde ; le compte rendu après « Libérer » ne se voit pas (l'encart se ferme :
   T4, l'écran de l'appelant). Contesté : l'agent tient la libération automatique pour presque
   inatteignable ; la fenêtre de mort décompte pourtant `GetReleaseTimeRemaining()` (lu dans la source) :
-  à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc.
+  à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc. ⚠️ Cette relecture date d'AVANT
+  T4 : les envois de T4 (« J'arrive » et « C'est réglé », `C_Club.SendMessage` et `SendAddonMessage`
+  dans nos propres `OnClick`) et les fenêtres de la réception n'ont pas été relus.
 - ~~**T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
   `/wpp on|off` (7, 11, 13).~~ FAIT le 2026-10-27, en trois commits : les deux formes de nom complet
   (`Line.WireName`, `Line.ShortName`) ; la logique (`WorldPvPPolice_Alert.lua`, `Call:AddResponder`,
