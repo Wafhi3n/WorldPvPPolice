@@ -17,3 +17,6 @@ WorldPvPPolice_Locale_esES.lua
 
 # Socle : table d'addon, SavedVariables, commande /wpp.
 WorldPvPPolice.lua
+
+# Formats lus hors de l'addon : ligne du fil Discord (bot) et message d'addon de guilde.
+WorldPvPPolice_Line.lua

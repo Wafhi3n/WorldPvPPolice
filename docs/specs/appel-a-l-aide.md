@@ -2,7 +2,9 @@
 
 > État : **validée** le 2026-10-27 par le user (D1 à D13) · Idée et décisions du user (D1 à D9),
 > mise en forme par l'agent ; D10 à D13 proposées par l'agent, validées par le user le même jour
-> (« je suis d'accord avec tes spec »). Rien n'est codé. Rien n'est mesuré en
+> (« je suis d'accord avec tes spec »). **T1 codé le 2026-10-27** (branche `feat/wpp-lignes` de
+> l'addon ET de l'outillage) : `WorldPvPPolice_Line.lua`, critères 1, 2, 3 et 6 tenus en test
+> (`tests/test_wpp_lines.lua`, 44 vérifications, dont une vraie valeur secrète). Rien n'est mesuré en
 > jeu : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les mesures M1 à M7 se font au
 > banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -82,6 +84,9 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   Wowhead, un `#SOS` tromperait sa lecture). Le bot échappe lui-même mentions et mise en forme.
 - **Deux persos du même nom sur deux royaumes de la guilde** : rare, accepté ; la clé d'un appel est
   `nom + numéro`.
+- **Position illisible** (pas de coordonnées du cadavre) : **OUVERT, à trancher après M3** — appeler
+  avec la zone seule, ou pas d'appel. En attendant, la grammaire validée exige les coordonnées : pas de
+  ligne (le code rend la raison `pos`).
 
 ## Décisions
 
@@ -178,9 +183,14 @@ OMW <Répondant> > <Perso> #SOS<n>
 END <Perso> #SOS<n>
 ```
 
-- `<Perso>`, `<Répondant>`, `<Tueur>` : nom de personnage seul, sans espace.
+- `<Perso>`, `<Répondant>`, `<Tueur>` : nom de personnage seul, sans royaume ni espace.
 - `<Zone>` : nom de la zone dans la langue de l'appelant (peut contenir espaces et apostrophes).
-- `<x>`, `<y>` : coordonnées en pourcentage de la carte de zone, une décimale, point décimal.
+  **Garanti par l'addon** : ni `( ) # | [ ]` dans la zone, ni `# | [ ]` ni caractère de contrôle dans
+  le message ; le lecteur coupe donc la zone au premier ` (` et la queue au `#SOS`. Une ligne dont le
+  message contient l'un d'eux n'est pas une ligne de l'addon (refusée à la relecture).
+- `<x>`, `<y>` : coordonnées en pourcentage de la carte de zone, une décimale, point décimal. Dans le
+  code, x et y sont des FRACTIONS (0..1, comme `C_Map.GetPlayerMapPosition`) : le pourcentage
+  n'existe que dans le texte.
 - `<n>` : numéro d'appel du personnage (compteur sauvegardé, croissant). Clé d'un appel = `Perso` + `n`.
 - `<uiMapID>` : carte de zone (`C_Map.GetBestMapForUnit("player")` à la mort).
 - `<morts>` : morts depuis l'ouverture de l'appel (1 à la première ligne).
@@ -208,6 +218,12 @@ de `|`, 255 octets au plus.
 - `1 OMW <n> <Perso appelant>` — j'arrive (l'émetteur est le répondant)
 - `1 END <n>` — réglé (l'émetteur est l'appelant)
 
+Nombre de champs exact par sorte (10, 4, 3) : un message décalé est refusé, pas relu de travers.
+`<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord. `<message>` peut être vide (le champ
+reste). Le tueur s'écrit sans royaume (il n'est qu'affiché) ; l'appelant d'un `OMW` **garde** son
+royaume (`Nom-Royaume`, comme le rend `CHAT_MSG_ADDON` entre royaumes) : il sert à reconnaître
+l'appel, et le royaume ne s'affiche jamais.
+
 ### Données sauvegardées
 
 `WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage), `alerts` (on/off, compte).
@@ -232,7 +248,8 @@ Aucun appel n'est sauvegardé : un `/reload` les oublie (ils expirent en 15 minu
 
 Une tâche = une session, avec son critère.
 
-- **T1** — Lignes et messages : construire / relire, nettoyer, couper (critères 1, 2, 3, 6).
+- ~~**T1** — Lignes et messages : construire / relire, nettoyer, couper (critères 1, 2, 3, 6).~~ FAIT
+  le 2026-10-27.
 - **T2** — Mort : détection, lecture du récap, position, encart sous la fenêtre de mort (5, 10).
 - **T3** — Envoi : Appeler / Entrée / Libérer, fil Discord + message de guilde, morts répétées (4).
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
