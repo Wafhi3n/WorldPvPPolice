@@ -10,9 +10,11 @@ NS.VERSION = "0.1.0"   -- = ## Version du .toc ; scripts\bump_version.ps1 -Addon
 _G.WorldPvPPolice = NS
 
 -- Réglages par défaut. CopyDefaults complète la base sans écraser ce que le joueur a changé ;
--- schemaVer sert le jour où une migration de la base devient nécessaire.
+-- schemaVer sert le jour où une migration de la base devient nécessaire. nextCall : prochain numéro
+-- d'appel par perso (clé = son GUID, NS.Call).
 NS.DEFAULTS = {
     schemaVer = 1,
+    nextCall = {},
 }
 
 local function CopyDefaults(dst, src)

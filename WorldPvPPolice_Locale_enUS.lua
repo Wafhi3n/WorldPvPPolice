@@ -23,5 +23,16 @@ local T = {
     ["Appeler"]                       = "Call",
     ["Discord : relié"]               = "Discord: linked",
     ["Discord : non relié (appel en jeu seulement)"] = "Discord: not linked (in-game call only)",
+    -- Compte rendu d'un envoi, dans l'encart
+    ["Mettre à jour"]                 = "Update",
+    ["Appel n°%d"]                    = "Call #%d",
+    ["guilde : prévenue"]             = "guild: notified",
+    ["guilde : échec"]                = "guild: failed",
+    ["Discord : envoyé"]              = "Discord: sent",
+    ["Discord : dans %d s"]           = "Discord: in %d s",
+    ["Discord : non relié"]           = "Discord: not linked",
+    ["Discord : refusé"]              = "Discord: refused",
+    ["Position illisible : appel impossible"] = "Position unreadable: cannot call",
+    ["Appel impossible"]              = "Cannot call",
 }
 for k, v in pairs(T) do NS.L[k] = v end

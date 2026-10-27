@@ -9,6 +9,8 @@
 > `_Panel.lua` (l'encart) ; critère 5 tenu en test (`tests/test_wpp_death.lua`). **Le même jour, le
 > user a mesuré M1 à M3 sur le PTR RETAIL** (12.1.7.70493, pas sur Forever : à refaire au banc) ; ses
 > mesures ont changé la lecture du tueur (tout le récap, D10 révisée) et la position d'un fantôme.
+> **T3 codé le même jour** : l'envoi (`WorldPvPPolice_Call.lua`, crochets dans `_Panel.lua`) ;
+> critère 4 tenu en test (`tests/test_wpp_call.lua`).
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -90,15 +92,28 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **On est ressuscité sans libérer** (pierre d'âme, prêtre) : la fenêtre de mort se ferme, l'encart
   aussi, rien ne part.
 - **La libération automatique** (fin du minuteur) n'est pas un geste : rien ne part sur Discord, sans
-  erreur visible. Seul le message d'addon de guilde peut partir (il ne demande pas de geste) — à
-  trancher, D13.
+  erreur visible (hors geste, `C_Club.SendMessage` serait un `ADDON_ACTION_BLOCKED`, que `pcall` ne
+  voit pas : l'addon ne l'appelle donc jamais sur ce chemin). Seul le message d'addon de guilde part
+  (D13), si la case contient un message. Reconnue à PLAYER_ALIVE en fantôme sans clic sur « Libérer ».
+- **Un clic sur « Libérer » envoie une fois** : le crochet du clic passe avant PLAYER_ALIVE et marque
+  la mort ; la libération automatique ne repart pas derrière lui.
+- **Double clic sur Appeler**, ou « Libérer » juste après Appeler avec le même message : rien ne repart
+  (ni guilde, ni Discord), et l'appel n'est pas prolongé.
+- **Rien n'est parti** (guilde qui refuse et pas de Discord) : l'appel n'est pas ouvert et garde son
+  numéro ; l'encart le dit (« guilde : échec »).
+- **Ce qui est parti** s'écrit dans l'encart, jamais dans le chat : « Appel n°7 · guilde : prévenue ·
+  Discord : envoyé » (ou « Discord : dans 60 s », « non relié », « refusé »). Pendant un appel en
+  cours, le bouton devient « Mettre à jour ».
 - **Guilde non reliée à Discord, ou en flux mêlé** : l'appel part en jeu seulement ; l'encart le dit
   discrètement (« Discord : non relié »). En flux mêlé, l'addon ne peut pas savoir que la guilde est
   reliée (mesuré) : on traite comme non relié.
 - **Pas de guilde** : pas d'encart.
-- **Morts répétées** : pendant un appel en cours (D11), chaque mort par un joueur augmente le compteur.
-  Sur Discord, au plus une ligne de mise à jour toutes les 2 minutes ; un compteur qui n'a pas pu
-  partir part avec le geste suivant.
+- **Morts répétées** : pendant un appel en cours (D11), chaque mort par un joueur (l'encart s'ouvre)
+  augmente le compteur ; rien ne part à la mort elle-même, la mise à jour part au geste suivant
+  (Appeler, Entrée, ou « Libérer » : la case garde son message pendant l'appel). Sur Discord, au plus
+  une ligne de mise à jour toutes les 2 minutes ; une mise à jour retenue part avec le geste suivant.
+  Une mort relue « monstre » après coup ne compte plus. Sans position lisible, la mise à jour garde
+  celle de l'appel ; sans tueur connu, le tueur de l'appel.
 - **Deux appels en même temps** (deux guildiens) : deux alertes empilées, 3 au plus à l'écran.
 - **Le guildien qui reçoit est en instance** : pas d'alerte (D6).
 - **L'appelant se déconnecte** : l'appel expire (D11).
@@ -245,7 +260,9 @@ END <Perso> #SOS<n>
 - `<uiMapID>` : carte de zone (`C_Map.GetBestMapForUnit("player")` à la mort).
 - `<morts>` : morts depuis l'ouverture de l'appel (1 à la première ligne).
 - `<CLASSE>` : jeton de classe anglais (`ROGUE`, `MAGE`…), si connu.
-- Une ligne `SOS` avec un `#SOS<n>` déjà vu = mise à jour de cet appel (morts, message).
+- Une ligne `SOS` avec un `#SOS<n>` déjà vu **depuis moins de 15 minutes** (D11) = mise à jour de cet
+  appel (morts, message). Au-delà, c'est un nouvel appel : le numéro vit dans les SavedVariables du
+  poste, et un autre poste (ou une base effacée) repart de 1.
 
 Exemples :
 
@@ -276,7 +293,8 @@ l'appel, et le royaume ne s'affiche jamais.
 
 ### Données sauvegardées
 
-`WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage), `alerts` (on/off, compte).
+`WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage : clé = GUID du perso,
+consommé seulement quand un appel part), `alerts` (on/off, compte ; T4).
 Aucun appel n'est sauvegardé : un `/reload` les oublie (ils expirent en 15 minutes de toute façon).
 
 ## Renvois
@@ -302,7 +320,11 @@ Une tâche = une session, avec son critère.
   le 2026-10-27.
 - ~~**T2** — Mort : détection, lecture du récap, position, encart sous la fenêtre de mort (5, 10).~~
   FAIT le 2026-10-27 (critère 10 : au banc).
-- **T3** — Envoi : Appeler / Entrée / Libérer, fil Discord + message de guilde, morts répétées (4).
+- ~~**T3** — Envoi : Appeler / Entrée / Libérer, fil Discord + message de guilde, morts répétées (4).~~
+  FAIT le 2026-10-27 : `WorldPvPPolice_Call.lua` (logique pure + sondes), crochets dans `_Panel.lua`
+  (`StaticPopup_OnClick` de la fenêtre DEATH, PLAYER_ALIVE en fantôme) ; critère 4 tenu en test
+  (`tests/test_wpp_call.lua`). Restent : critère 9 (agent `api-gotcha-reviewer`, sur le mot du user)
+  et M2 au banc (envoi depuis notre bouton, Entrée et « Libérer »).
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
   `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
   recopie de l'émetteur du SOS), alors que l'appelant connaît `UnitName("player")` sans royaume :

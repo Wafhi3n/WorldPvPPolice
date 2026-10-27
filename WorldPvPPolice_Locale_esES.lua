@@ -23,5 +23,16 @@ local T = {
     ["Appeler"]                       = "Llamar",
     ["Discord : relié"]               = "Discord: vinculado",
     ["Discord : non relié (appel en jeu seulement)"] = "Discord: no vinculado (llamada solo en el juego)",
+    -- Compte rendu d'un envoi, dans l'encart
+    ["Mettre à jour"]                 = "Actualizar",
+    ["Appel n°%d"]                    = "Llamada n.º %d",
+    ["guilde : prévenue"]             = "hermandad: avisada",
+    ["guilde : échec"]                = "hermandad: fallo",
+    ["Discord : envoyé"]              = "Discord: enviado",
+    ["Discord : dans %d s"]           = "Discord: en %d s",
+    ["Discord : non relié"]           = "Discord: no vinculado",
+    ["Discord : refusé"]              = "Discord: rechazado",
+    ["Position illisible : appel impossible"] = "Posición ilegible: no se puede llamar",
+    ["Appel impossible"]              = "No se puede llamar",
 }
 for k, v in pairs(T) do NS.L[k] = v end

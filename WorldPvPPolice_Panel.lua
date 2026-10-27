@@ -1,13 +1,15 @@
 -- WorldPvPPolice_Panel.lua — l'encart d'appel sous la fenêtre de mort (spec
--- docs/specs/appel-a-l-aide.md, « Ce qu'on veut » 1 et 2, D2, D4).
+-- docs/specs/appel-a-l-aide.md, « Ce qu'on veut » 1 et 2, D2, D3, D4, D13).
 --
 -- La fenêtre de mort est un StaticPopup de Blizzard (« DEATH » ; « HARDCORE_DEATH » en mode hardcore,
 -- où la mort est définitive : pas d'encart). On ne l'écrit JAMAIS : on s'accroche à StaticPopup_Show
--- (hooksecurefunc, après Blizzard) et notre cadre, à nous, s'ancre sous elle. Un champ posé sur la
--- fenêtre ou un script remplacé pourrait gâter « Libérer l'esprit » (mesure M7 au banc).
+-- et à StaticPopup_OnClick (hooksecurefunc, après Blizzard) et notre cadre, à nous, s'ancre sous elle.
+-- Un champ posé sur la fenêtre ou un script remplacé pourrait gâter « Libérer l'esprit » (M7 au banc).
 --
--- L'envoi (bouton Appeler, Entrée, et le clic de « Libérer l'esprit ») est la tâche T3 : ici, le
--- bouton et Entrée passent la main à NS.Call quand il existe. Aucune ligne de chat (skill chat-output).
+-- Quatre chemins vers NS.Call:Send : le bouton Appeler, Entrée dans la case, le clic (ou la touche)
+-- sur « Libérer l'esprit », tous trois des gestes ; et la libération automatique (fin du minuteur),
+-- sans geste : la guilde seulement. Le compte rendu s'affiche dans l'encart, jamais dans le chat
+-- (skill chat-output).
 local _, NS = ...
 local L = NS.L
 
@@ -50,7 +52,7 @@ end
 
 local function buildMessageBox(f)
     local box = CreateFrame("EditBox", "WorldPvPPolicePanelMessage", f, "InputBoxInstructionsTemplate")
-    box:SetSize(WIDTH - 140, 22)
+    box:SetSize(WIDTH - 160, 22)
     box:SetPoint("BOTTOMLEFT", 28, 30)
     box:SetAutoFocus(false)
     box:SetMaxBytes(MAX_MESSAGE_BYTES)
@@ -76,12 +78,14 @@ function Panel:Build()
     f.where = text(f, "GameFontHighlightSmall", "BOTTOM", f.killer, -3)
     f.box = buildMessageBox(f)
     f.call = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    f.call:SetSize(90, 22)
+    f.call:SetSize(110, 22)   -- « Mettre à jour », « Aktualisieren » pendant un appel en cours
     f.call:SetPoint("LEFT", f.box, "RIGHT", 8, 0)
     f.call:SetText(L["Appeler"])
     f.call:SetScript("OnClick", function() Panel:Call("button") end)
     f.discord = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     f.discord:SetPoint("BOTTOM", 0, 14)
+    f.discord:SetWidth(WIDTH - 24)
+    f.discord:SetWordWrap(false)   -- le compte rendu tient sur une ligne, sous la case (coupé au pire)
     local since = 0
     f:SetScript("OnUpdate", function(self, elapsed)
         since = since + elapsed
@@ -110,11 +114,29 @@ function Panel:Refresh(state)
     if not (f and state) then return end
     f.killer:SetText(NS.Death.KillerText(state.killer, L) or "")
     f.where:SetText(NS.Death.WhereText(state.snap, L))
-    if NS.Discord.Stream() then
+    f.call:SetText(NS.Call:IsActive() and L["Mettre à jour"] or L["Appeler"])
+    if self.status then
+        f.discord:SetText(self.status)
+    elseif NS.Discord.Stream() then
         f.discord:SetText(L["Discord : relié"])
     else
         f.discord:SetText(L["Discord : non relié (appel en jeu seulement)"])
     end
+end
+
+local function discordText(r)
+    if r.discord == "later" then return string.format(L["Discord : dans %d s"], r.wait or 0) end
+    if r.discord == "sent" or r.discord == "same" then return L["Discord : envoyé"] end
+    if r.discord == "none" or r.discord == "nogesture" then return L["Discord : non relié"] end
+    return L["Discord : refusé"]
+end
+
+-- Le compte rendu d'un envoi, en une ligne : « Appel n°7 · guilde : prévenue · Discord : envoyé ».
+function Panel.ReportText(r)
+    if r.err == "pos" then return L["Position illisible : appel impossible"] end
+    if r.err then return L["Appel impossible"] end
+    local guild = r.guild == "failed" and L["guilde : échec"] or L["guilde : prévenue"]
+    return string.format(L["Appel n°%d"], r.n) .. " · " .. guild .. " · " .. discordText(r)
 end
 
 function Panel:ShowUnder(dialog, state)
@@ -124,12 +146,13 @@ function Panel:ShowUnder(dialog, state)
     f:Show()
 end
 
--- Une nouvelle mort hors d'un appel en cours repart d'une case VIDE : sinon le message d'un vieil
--- appel repartirait, des heures plus tard, au premier clic sur « Libérer l'esprit » (D3). Pendant un
--- appel en cours (T3, NS.Call), le texte reste : la mise à jour le reprend.
-function Panel:ClearUnlessActive()
-    if not self.frame then return end
-    if NS.Call and NS.Call.IsActive and NS.Call:IsActive() then return end
+-- Une nouvelle mort efface le compte rendu de la précédente. Hors d'un appel en cours, elle repart
+-- aussi d'une case VIDE : sinon le message d'un vieil appel repartirait, des heures plus tard, au
+-- premier clic sur « Libérer l'esprit » (D3). Pendant un appel en cours, le texte reste : le clic sur
+-- « Libérer » envoie la mise à jour (compteur de morts).
+function Panel:NewDeath()
+    self.status = nil
+    if not self.frame or NS.Call:IsActive() then return end
     self.frame.box:SetText("")
 end
 
@@ -140,53 +163,107 @@ function Panel:Hide()
     end
 end
 
--- Le bouton Appeler et Entrée. L'envoi lui-même est T3 (NS.Call) ; le message est relu ici, au geste.
+-- Envoie l'appel (ou sa mise à jour) pour la mort en cours, si l'encart lui a été proposé. Le message
+-- est relu ici, au geste ; la capture est celle faite MORT (Death.last), jamais refaite à l'envoi.
 function Panel:Call(origin)
-    if not (self.frame and NS.Call and NS.Call.FromPanel) then return end
-    NS.Call:FromPanel(self.frame.box:GetText() or "", origin)
+    local Death = NS.Death
+    if not (self.frame and Death.serial and self.offered == Death.serial) then return end
+    local report = NS.Call:Send(self.frame.box:GetText() or "", origin, Death.last, Death.serial)
+    if not report or origin == "auto" then return end
+    self.status = Panel.ReportText(report)
+    self:Refresh(Death.last)
 end
 
--- Le récap a pu arriver après la fenêtre : un tueur devenu « monstre » ferme l'encart, un joueur
--- trouvé s'affiche.
+-- Le récap a pu arriver après la fenêtre : un tueur devenu « monstre » ferme l'encart (et cette mort
+-- ne compte plus dans l'appel en cours), un joueur trouvé s'affiche.
 function Panel:Recheck()
     if not (self.frame and self.frame:IsShown()) then return end
     NS.Death:RereadKiller()
     if NS.Death:Offer(NS.Death.last) then
         self:Refresh(NS.Death.last)
     else
+        NS.Call:ForgetDeath(NS.Death.serial)
+        self.offered = nil
         self:Hide()
     end
 end
 
+local function markDeath()
+    local serial, isNew = NS.Death:Mark()
+    if isNew then Panel:NewDeath() end
+    return serial
+end
+
 local function onPopupShow(which)
     if which ~= WHICH then return end
+    local serial = markDeath()
     local state = NS.Death:Current()
     local dialog = deathDialog()
     if not (dialog and NS.Death:Offer(state)) then
+        Panel.offered = nil
         Panel:Hide()
         return
     end
+    Panel.offered = serial
+    NS.Call:NoteDeath(serial)
     Panel:ShowUnder(dialog, state)
     if state.killer.status == "unknown" and _G.C_Timer then
         _G.C_Timer.After(RECAP_RETRY, function() Panel:Recheck() end)
     end
 end
 
+-- « Libérer l'esprit » cliqué, ou sa touche : StaticPopup_OnClick(fenêtre DEATH, 1), qui a déjà appelé
+-- RepopMe() quand on passe. On est encore dans la pile du clic, donc avec le geste qu'exige
+-- C_Club.SendMessage (M2 au banc). Sans message dans la case, libérer reste un simple « libérer » (D3).
+local function onPopupClick(dialog, index)
+    if index ~= 1 then return end
+    local ok, which = pcall(function() return dialog.which end)
+    if not (ok and which == WHICH) then return end
+    local serial = NS.Death.serial
+    if not serial or Panel.released == serial then return end
+    Panel.released = serial
+    Panel:Call("release")
+end
+
 if hooksecurefunc and _G.StaticPopup_Show then
     hooksecurefunc("StaticPopup_Show", onPopupShow)
 end
+if hooksecurefunc and _G.StaticPopup_OnClick then
+    hooksecurefunc("StaticPopup_OnClick", onPopupClick)
+end
 
--- PLAYER_DEAD capture la mort (la fenêtre s'ouvre sur le même événement, chez Blizzard) ; libérer ou
--- être ressuscité referme l'encart.
+local function isGhost()
+    local ok, ghost = pcall(UnitIsGhost, "player")
+    return ok and NS.Line.Readable(ghost) and ghost == true
+end
+
+-- PLAYER_ALIVE en FANTÔME sans clic sur « Libérer » = la libération automatique (fin du minuteur : la
+-- fenêtre se ferme sans OnButton1, Blizzard_Game/Camelot). Pas de geste : la guilde seulement (D13).
+-- PLAYER_ALIVE sans être fantôme = ressuscité sans libérer : rien ne part.
+local function onAlive()
+    local serial = NS.Death.serial
+    if serial and Panel.released ~= serial and isGhost() then
+        Panel.released = serial
+        Panel:Call("auto")
+    end
+    NS.Death:Revive()
+    Panel:Hide()
+end
+
+-- PLAYER_DEAD capture la mort (la fenêtre s'ouvre sur le même événement, chez Blizzard, parfois avant
+-- nous) ; libérer ou être ressuscité referme l'encart.
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_DEAD")
 events:RegisterEvent("PLAYER_ALIVE")
 events:RegisterEvent("PLAYER_UNGHOST")
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_DEAD" then
+        markDeath()
         NS.Death:Capture()
-        Panel:ClearUnlessActive()
+    elseif event == "PLAYER_ALIVE" then
+        onAlive()
     else
+        NS.Death:Revive()
         Panel:Hide()
     end
 end)

@@ -166,6 +166,19 @@ Death.probe = {
     now        = function() return GetTime() end,
 }
 
+-- Une mort dure du passage à « mort » jusqu'à PLAYER_ALIVE ou PLAYER_UNGHOST. Rend (numéro, nouvelle ?).
+-- Appelée à PLAYER_DEAD ET à l'ouverture de la fenêtre de mort, dans un ordre qui n'est pas sûr
+-- (Blizzard ouvre la fenêtre sur son propre PLAYER_DEAD) : la première compte. Après un /reload en
+-- étant mort, la fenêtre rouvre : nouvelle mort pour nous (un appel ne survit pas au /reload).
+function Death:Mark()
+    if self.dead then return self.serial, false end
+    self.dead = true
+    self.serial = (self.serial or 0) + 1
+    return self.serial, true
+end
+
+function Death:Revive() self.dead = nil end
+
 -- Lit tout ce qu'on sait de la mort en cours et le garde dans Death.last.
 function Death:Capture()
     local p = self.probe

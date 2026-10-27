@@ -22,5 +22,16 @@ local T = {
     ["Appeler"]                       = "Rufen",
     ["Discord : relié"]               = "Discord: verbunden",
     ["Discord : non relié (appel en jeu seulement)"] = "Discord: nicht verbunden (Ruf nur im Spiel)",
+    -- Compte rendu d'un envoi, dans l'encart
+    ["Mettre à jour"]                 = "Aktualisieren",
+    ["Appel n°%d"]                    = "Ruf Nr. %d",
+    ["guilde : prévenue"]             = "Gilde: benachrichtigt",
+    ["guilde : échec"]                = "Gilde: fehlgeschlagen",
+    ["Discord : envoyé"]              = "Discord: gesendet",
+    ["Discord : dans %d s"]           = "Discord: in %d s",
+    ["Discord : non relié"]           = "Discord: nicht verbunden",
+    ["Discord : refusé"]              = "Discord: abgelehnt",
+    ["Position illisible : appel impossible"] = "Position unlesbar: Ruf unmöglich",
+    ["Appel impossible"]              = "Ruf unmöglich",
 }
 for k, v in pairs(T) do NS.L[k] = v end
