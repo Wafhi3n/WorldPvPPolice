@@ -6,10 +6,12 @@
 -- et à StaticPopup_OnClick (hooksecurefunc, après Blizzard) et notre cadre, à nous, s'ancre sous elle.
 -- Un champ posé sur la fenêtre ou un script remplacé pourrait gâter « Libérer l'esprit » (M7 au banc).
 --
--- Quatre chemins vers NS.Call:Send : le bouton Appeler, Entrée dans la case, le clic (ou la touche)
--- sur « Libérer l'esprit », tous trois des gestes ; et la libération automatique (fin du minuteur),
--- sans geste : la guilde seulement. Le compte rendu s'affiche dans l'encart, jamais dans le chat
--- (skill chat-output).
+-- Quatre chemins vers NS.Call:Send : le bouton Appeler, Entrée dans la case, le clic sur « Libérer
+-- l'esprit », tous trois des gestes ; et la libération automatique (fin du minuteur), sans geste : la
+-- guilde seulement. « Libérer » n'a PAS de touche : seules les fenêtres à `enterClicksFirstButton` en
+-- posent une (StaticPopup.lua, lu le 2026-10-27 dans les sources Forever 70532 et PTR 12.1.7), et DEATH
+-- n'en a pas. Le compte rendu s'affiche dans l'encart, jamais dans le chat (skill chat-output) ; celui
+-- de Discord se complète quand la ligne revient en jeu (CHAT_MSG_GUILD_DISCORD, NS.Call:OnEcho).
 local _, NS = ...
 local L = NS.L
 
@@ -128,7 +130,9 @@ end
 
 local function discordText(r)
     if r.discord == "later" then return string.format(L["Discord : dans %d s"], r.wait or 0) end
+    if r.discord == "pending" then return L["Discord : envoi en cours"] end
     if r.discord == "sent" or r.discord == "same" then return L["Discord : envoyé"] end
+    if r.discord == "noecho" then return L["Discord : pas de retour"] end
     if r.discord == "none" or r.discord == "nogesture" then return L["Discord : non relié"] end
     return L["Discord : refusé"]
 end
@@ -153,7 +157,7 @@ end
 -- premier clic sur « Libérer l'esprit » (D3). Pendant un appel en cours, le texte reste : le clic sur
 -- « Libérer » envoie la mise à jour (compteur de morts).
 function Panel:NewDeath()
-    self.status = nil
+    self.status, self.report = nil, nil
     if not self.frame or NS.Call:IsActive() then return end
     self.frame.box:SetText("")
 end
@@ -172,9 +176,20 @@ function Panel:Call(origin)
     if not (self.frame and Death.serial and self.offered == Death.serial) then return end
     local report = NS.Call:Send(self.frame.box:GetText() or "", origin, Death.last, Death.serial)
     if not report or origin == "auto" then return end
+    self.report = report
     self.status = Panel.ReportText(report)
     self:Refresh(Death.last)
 end
+
+-- La ligne Discord en cours est revenue en jeu (« sent ») ou pas à temps (« noecho ») : le compte
+-- rendu se complète, s'il est encore celui de cette mort.
+function Panel:OnDiscord(state)
+    if not (self.report and self.report.discord == "pending") then return end
+    self.report.discord = state
+    self.status = Panel.ReportText(self.report)
+    if self.frame and self.frame:IsShown() then self:Refresh(NS.Death.last) end
+end
+NS.Call.onDiscord = function(state) Panel:OnDiscord(state) end
 
 -- Le récap a pu arriver après la fenêtre : un tueur devenu « monstre » ferme l'encart (et cette mort
 -- ne compte plus dans l'appel en cours), un joueur trouvé s'affiche.
@@ -214,9 +229,10 @@ local function onPopupShow(which)
     end
 end
 
--- « Libérer l'esprit » cliqué, ou sa touche : StaticPopup_OnClick(fenêtre DEATH, 1), qui a déjà appelé
--- RepopMe() quand on passe. On est encore dans la pile du clic, donc avec le geste qu'exige
--- C_Club.SendMessage (M2 au banc). Sans message dans la case, libérer reste un simple « libérer » (D3).
+-- « Libérer l'esprit » cliqué : StaticPopup_OnClick(fenêtre DEATH, 1), qui a déjà appelé RepopMe()
+-- quand on passe. On est encore dans la pile du clic, donc avec le geste qu'exige C_Club.SendMessage
+-- (M2 au banc ; s'il manquait, la ligne ne reviendrait pas et l'encart ne dirait pas « envoyé »). Sans
+-- message dans la case, libérer reste un simple « libérer » (D3).
 local function onPopupClick(dialog, index)
     if index ~= 1 then return end
     local ok, which = pcall(function() return dialog.which end)
@@ -253,13 +269,17 @@ local function onAlive()
 end
 
 -- PLAYER_DEAD capture la mort (la fenêtre s'ouvre sur le même événement, chez Blizzard, parfois avant
--- nous) ; libérer ou être ressuscité referme l'encart.
+-- nous) ; libérer ou être ressuscité referme l'encart. CHAT_MSG_GUILD_DISCORD rend notre ligne Discord
+-- (texte en 1er, GUID en 12e) : inscrit sous pcall, un événement inconnu d'un client lèverait.
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_DEAD")
 events:RegisterEvent("PLAYER_ALIVE")
 events:RegisterEvent("PLAYER_UNGHOST")
-events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_DEAD" then
+pcall(events.RegisterEvent, events, "CHAT_MSG_GUILD_DISCORD")
+events:SetScript("OnEvent", function(_, event, ...)
+    if event == "CHAT_MSG_GUILD_DISCORD" then
+        NS.Call:OnEcho((...), (select(12, ...)))
+    elseif event == "PLAYER_DEAD" then
         markDeath()
         NS.Death:Capture()
     elseif event == "PLAYER_ALIVE" then

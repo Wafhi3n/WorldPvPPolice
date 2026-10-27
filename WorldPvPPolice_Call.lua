@@ -5,10 +5,15 @@
 -- Logique pure + des sondes (Call.probe) qui seules touchent au jeu, comme _Death.lua : les tests
 -- remplacent les sondes et l'horloge.
 --
--- DEUX RÈGLES DURES :
+-- TROIS RÈGLES DURES :
 --   - C_Club.SendMessage exige un geste du joueur (clic, touche) : hors geste, c'est
 --     ADDON_ACTION_BLOCKED, que pcall ne voit PAS. Le chemin sans geste (libération automatique, D13)
 --     n'écrit qu'à la guilde, jamais sur Discord.
+--   - Une ligne Discord n'est PARTIE que quand elle revient en jeu (CHAT_MSG_GUILD_DISCORD, notre
+--     texte, notre GUID ; mesuré sur Forever le 2026-10-10) dans les ECHO_WAIT secondes : un envoi
+--     bloqué ne lève rien. D'ici là elle est « en cours » ; sans retour, rien n'est compté (ni délai
+--     de 2 minutes, ni « déjà envoyée ») et le geste suivant la renvoie (décision du user, 2026-10-27,
+--     après la revue api-gotcha-reviewer).
 --   - On envoie la capture faite MORT (Death.last), jamais une capture refaite à l'envoi : le clic sur
 --     « Libérer » et la libération automatique arrivent quand on devient fantôme, et le fantôme est
 --     chez la gardienne des âmes, peut-être sur une autre carte.
@@ -20,6 +25,7 @@ NS.Call = Call
 
 Call.EXPIRY = 15 * 60       -- s après la dernière mise à jour partie (D11)
 Call.DISCORD_EVERY = 120    -- s entre deux lignes Discord d'un même appel (morts répétées, critère 4)
+Call.ECHO_WAIT = 10         -- s laissées à la ligne Discord pour revenir en jeu (délai jamais mesuré)
 
 local function readable(v) return Line.Readable(v) end
 
@@ -142,7 +148,8 @@ function Call:ToGuild(a, payload)
 end
 
 -- La ligne du fil Discord : seulement sur un GESTE, au plus une toutes les DISCORD_EVERY secondes pour
--- un même appel ; une mise à jour retenue part avec le geste suivant (critère 4). Rend (état, attente).
+-- un même appel ; une mise à jour retenue part avec le geste suivant (critère 4). Rend (état, attente) ;
+-- « pending » = partie sans retour encore : OnEcho la confirme, CheckEcho la déclare perdue.
 function Call:ToDiscord(a, c, gesture)
     local p = self.probe
     local club, stream = call(p.stream)
@@ -150,14 +157,52 @@ function Call:ToDiscord(a, c, gesture)
     local line = Line.BuildSOS(c)
     if not line then return "failed" end
     if a.discordSig == line then return "same" end
+    if a.pending then
+        if now(p) - a.pending.at < Call.ECHO_WAIT then return "pending" end
+        a.pending = nil   -- jamais revenue (CheckEcho n'est pas encore passé) : comme refusée
+    end
     if not gesture then return "nogesture" end
     if a.discordAt then
         local wait = Call.DISCORD_EVERY - (now(p) - a.discordAt)
         if wait > 0 then return "later", math.ceil(wait) end
     end
     if not pcall(p.sendDiscord, club, stream, line) then return "failed" end
-    a.discordAt, a.discordSig = now(p), line
-    return "sent"
+    a.pending = { line = line, at = now(p) }
+    call(p.after, Call.ECHO_WAIT + 1, function() self:CheckEcho() end)
+    return "pending"
+end
+
+function Call:Notify(state)
+    if type(self.onDiscord) == "function" then pcall(self.onDiscord, state) end
+end
+
+local function squash(s) return (s:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")) end
+
+-- La ligne est revenue en jeu (CHAT_MSG_GUILD_DISCORD : texte en 1er, GUID de l'auteur en 12e,
+-- peut-être secrets) : elle est partie. Notre ligne et pas une autre : le même texte, blancs regroupés
+-- (au cas où le serveur y toucherait) ; une ligne plus ancienne du même appel (même numéro, autre
+-- message) ne confirme pas la nouvelle. Un GUID lisible qui n'est pas le nôtre = la ligne d'un autre.
+-- Rend true si elle confirme l'envoi.
+function Call:OnEcho(line, guid)
+    local a = self.active
+    local pending = a and a.pending
+    if not (pending and readable(line) and type(line) == "string") then return false end
+    local mine = text((call(self.probe.guid)))
+    if readable(guid) and type(guid) == "string" and guid ~= "" and guid ~= mine then return false end
+    if line ~= pending.line and squash(line) ~= squash(pending.line) then return false end
+    a.discordAt, a.discordSig, a.pending = pending.at, pending.line, nil
+    self:Notify("sent")
+    return true
+end
+
+-- ECHO_WAIT secondes sans retour : la ligne n'est pas partie (bloquée, sans erreur). Rien n'est compté,
+-- le geste suivant la renverra.
+function Call:CheckEcho()
+    local a = self.active
+    local pending = a and a.pending
+    if not pending or now(self.probe) - pending.at < Call.ECHO_WAIT then return end
+    a.pending = nil
+    self:Notify("noecho")
 end
 
 -- ===== Le geste =====
@@ -165,8 +210,9 @@ end
 -- `origin` : "button", "enter", "release" (un clic ou une touche), ou "auto" (la libération
 -- automatique, sans geste : la guilde seulement, D13). `state` = la capture faite mort (Death.last),
 -- `serial` = la mort en cours. Rend nil si rien n'est à envoyer (libérer sans message, D3), sinon un
--- compte rendu : { n, deaths, guild = "sent"|"same"|"failed", discord = "sent"|"same"|"later"|"none"|
+-- compte rendu : { n, deaths, guild = "sent"|"same"|"failed", discord = "pending"|"same"|"later"|"none"|
 -- "nogesture"|"failed", wait } ou { err = "pos"|"num"|… } quand l'appel ne peut pas se construire.
+-- « pending » devient « sent » ou « noecho » plus tard, par Call.onDiscord(état).
 function Call:Send(msg, origin, state, serial)
     if (origin == "release" or origin == "auto") and Line.Clean(msg) == "" then return nil end
     if not (state and serial) then return { err = "state" } end
@@ -189,7 +235,8 @@ function Call:Send(msg, origin, state, serial)
     report.discord, report.wait = self:ToDiscord(a, c, origin ~= "auto")
     -- L'appel dure 15 minutes après la dernière mise à jour PARTIE (D11) : un double clic qui n'envoie
     -- rien ne le prolonge pas. Un appel dont rien n'est parti n'est pas ouvert, et garde son numéro.
-    local sent = report.guild == "sent" or report.discord == "sent"
+    -- Une ligne Discord en cours compte : sans appel ouvert, son retour n'aurait rien à confirmer.
+    local sent = report.guild == "sent" or report.discord == "pending"
     if opening and not sent then return report end
     if opening then
         consume()
@@ -209,4 +256,5 @@ Call.probe = {
     stream      = function() return NS.Discord.Stream() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
+    after       = function(seconds, fn) C_Timer.After(seconds, fn) end,
 }

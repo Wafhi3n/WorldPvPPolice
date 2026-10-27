@@ -15,7 +15,9 @@
 > une seule fois) en test sur le vrai `_Panel.lua` devant une fenêtre factice (`tests/test_wpp_panel.lua`).
 > **D14 et D15 décidées par le user le même jour** (zone seule si les coordonnées sont illisibles ;
 > plusieurs tueurs quand une équipe campe) et codées : le contrat v1 a changé AVANT toute release
-> (section « Contrat ») ; les quatre premiers exemples sont restés identiques à l'octet.
+> (section « Contrat ») ; les quatre premiers exemples sont restés identiques à l'octet. **Critère 9
+> relu** par l'agent `api-gotcha-reviewer` le même jour, sur Forever et le PTR Retail ; d'où **D16**
+> (user) : une ligne Discord ne compte comme envoyée que revenue en jeu.
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -108,8 +110,13 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **Rien n'est parti** (guilde qui refuse et pas de Discord) : l'appel n'est pas ouvert et garde son
   numéro ; l'encart le dit (« guilde : échec »).
 - **Ce qui est parti** s'écrit dans l'encart, jamais dans le chat : « Appel n°7 · guilde : prévenue ·
-  Discord : envoyé » (ou « Discord : dans 60 s », « non relié », « refusé »). Pendant un appel en
-  cours, le bouton devient « Mettre à jour ».
+  Discord : envoyé » (ou « Discord : envoi en cours », « pas de retour », « dans 60 s », « non relié »,
+  « refusé »). Pendant un appel en cours, le bouton devient « Mettre à jour ».
+- **Un envoi Discord bloqué** (pas de geste reconnu par le jeu : `ADDON_ACTION_BLOCKED`, que le code
+  ne voit pas) : la ligne ne revient pas en jeu. Elle reste « en cours » 10 s, puis « pas de retour » ;
+  rien n'est compté (ni délai de 2 minutes, ni « déjà envoyée »), et le geste suivant la renvoie (D16).
+  Pendant ces 10 s, un nouveau geste n'envoie pas une deuxième ligne. Une ligne revenue après les 10 s
+  est ignorée : au pire, le geste suivant en envoie une deuxième.
 - **Guilde non reliée à Discord, ou en flux mêlé** : l'appel part en jeu seulement ; l'encart le dit
   discrètement (« Discord : non relié »). En flux mêlé, l'addon ne peut pas savoir que la guilde est
   reliée (mesuré) : on traite comme non relié.
@@ -174,6 +181,12 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   équipe ») — **L'appel nomme plusieurs tueurs.** Précisé par l'agent, à confirmer par le user : les
   joueurs de la dernière mort devant, chacun une fois, 5 au plus dans l'appel, 3 noms dans l'encart ;
   deux listes alignées dans la ligne (`kXyz,Abc cROGUE,MAGE`, section « Contrat »).
+- **D16** (user, 2026-10-27, « par le retour », après la revue `api-gotcha-reviewer`) — **Une ligne
+  Discord ne compte comme envoyée que quand elle revient en jeu** : `CHAT_MSG_GUILD_DISCORD` (mesuré sur
+  Forever le 2026-10-10 : la ligne écrite depuis le jeu y revient, nom du perso et GUID), même texte
+  (blancs regroupés), GUID de l'auteur = le nôtre quand il est lisible. Attente : 10 s (délai du
+  retour jamais mesuré, M2). Raison : un `C_Club.SendMessage` bloqué faute de geste ne lève aucune
+  erreur, l'encart aurait dit « envoyé » et le délai de 2 minutes aurait empêché de réessayer.
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
@@ -204,6 +217,9 @@ la mesure sur Forever.
   et accroché au clic de « Libérer l'esprit ». Aucun `ADDON_ACTION_BLOCKED` (`/console taintLog 1`).
   *PTR Retail*, par macro : marche en combat (sur un mannequin) et une fois mort ; sur Discord la ligne
   porte le nom du compte, en jeu celui du perso. Pas mesuré : depuis notre bouton, Entrée, « Libérer ».
+  À relever aussi (D16) : la ligne revient-elle en `CHAT_MSG_GUILD_DISCORD`, avec notre GUID en 12e
+  argument, et en combien de temps (l'addon attend 10 s) ? L'encart doit passer de « envoi en cours »
+  à « envoyé ». « Libérer » n'a pas de touche (seul le clic compte) : source lue, rien à mesurer.
 - **M3** — Position : `C_Map.GetPlayerMapPosition` mort avant de libérer, et
   `C_DeathInfo.GetCorpseMapPosition` après ; mêmes coordonnées ? *PTR Retail* : mort avant de libérer,
   joueur lisible et cadavre = nil ; après, cadavre lisible et identique (0.482, 0.417 les deux fois).
@@ -369,8 +385,15 @@ Une tâche = une session, avec son critère.
   FAIT le 2026-10-27 : `WorldPvPPolice_Call.lua` (logique pure + sondes), crochets dans `_Panel.lua`
   (`StaticPopup_OnClick` de la fenêtre DEATH, PLAYER_ALIVE en fantôme) ; critère 4 tenu en test
   (`tests/test_wpp_call.lua`) ; le branchement (clic puis libération auto = un envoi, rez acceptée =
-  rien, appel expiré = case vide) dans `tests/test_wpp_panel.lua`. Restent : critère 9 (agent `api-gotcha-reviewer`, sur le mot du user)
-  et M2 au banc (envoi depuis notre bouton, Entrée et « Libérer »).
+  rien, appel expiré = case vide) dans `tests/test_wpp_panel.lua`. **Critère 9 relu le 2026-10-27**
+  (agent `api-gotcha-reviewer`, sources Forever 70532 ET PTR Retail 12.1.7.70493, sur le mot du user) :
+  aucune écriture dans la fenêtre de mort, aucun chemin de taint, valeurs secrètes testées partout,
+  API présentes sur les deux clients. Suites données : D16 (confirmation par le retour), commentaires
+  corrigés (« Libérer » n'a pas de touche). Laissés tels quels : l'encart peut chevaucher une nouvelle
+  fenêtre un quart de seconde ; le compte rendu après « Libérer » ne se voit pas (l'encart se ferme :
+  T4, l'écran de l'appelant). Contesté : l'agent tient la libération automatique pour presque
+  inatteignable ; la fenêtre de mort décompte pourtant `GetReleaseTimeRemaining()` (lu dans la source) :
+  à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc.
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
   `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
   recopie de l'émetteur du SOS), alors que l'appelant connaît `UnitName("player")` sans royaume :
