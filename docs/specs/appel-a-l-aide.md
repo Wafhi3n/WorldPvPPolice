@@ -1,6 +1,7 @@
 # Appel à l'aide de guilde à la mort (PvP sauvage)
 
-> État : **validée** le 2026-10-27 par le user (D1 à D13) · Idée et décisions du user (D1 à D9),
+> État : **validée** le 2026-10-27 par le user (D1 à D13 ; D14 et D15 décidées par lui le même jour,
+> leurs précisions et le contrat changé en attente de son accord) · Idée et décisions du user (D1 à D9),
 > mise en forme par l'agent ; D10 à D13 proposées par l'agent, validées par le user le même jour
 > (« je suis d'accord avec tes spec »). **T1 codé le 2026-10-27** (branche `feat/wpp-lignes` de
 > l'addon ET de l'outillage) : `WorldPvPPolice_Line.lua`, critères 1, 2, 3 et 6 tenus en test
@@ -12,6 +13,9 @@
 > **T3 codé le même jour** : l'envoi (`WorldPvPPolice_Call.lua`, crochets dans `_Panel.lua`) ;
 > critère 4 tenu en test (`tests/test_wpp_call.lua`), branchement de l'encart (quel geste envoie quoi,
 > une seule fois) en test sur le vrai `_Panel.lua` devant une fenêtre factice (`tests/test_wpp_panel.lua`).
+> **D14 et D15 décidées par le user le même jour** (zone seule si les coordonnées sont illisibles ;
+> plusieurs tueurs quand une équipe campe) et codées : le contrat v1 a changé AVANT toute release
+> (section « Contrat ») ; les quatre premiers exemples sont restés identiques à l'octet.
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -32,11 +36,12 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 1. **À la mort, tué par un joueur, en extérieur**, un encart apparaît sous la fenêtre « Libérer
    l'esprit ». Il propose d'appeler la guilde à l'aide, avec une case pour un message court
    (« 3 voleurs au pont ») et un bouton **Appeler**. Si on sait qui nous a tués, l'encart le dit
-   (« Tué par Xyz, voleur »).
+   (« Tueur : Xyz (Voleur) », ou « Tueurs : Xyz, Abc, Def +2 » quand une équipe nous campe).
 2. **L'appel part** au clic sur Appeler, à Entrée dans la case, ou au clic sur **Libérer l'esprit**
-   si la case contient un message. Il porte **la position du cadavre** (zone et coordonnées).
-3. **En jeu**, chaque guildien qui a l'addon voit une alerte : qui appelle, où, tué par qui, combien
-   de morts, le message. Un bouton **J'arrive** pose un point de route sur le cadavre et prévient
+   si la case contient un message. Il porte **la position du cadavre** (zone et coordonnées ; la zone
+   seule si les coordonnées sont illisibles, D14).
+3. **En jeu**, chaque guildien qui a l'addon voit une alerte : qui appelle, où, tué par qui (tous les
+   joueurs qui l'ont frappé, D15), combien de morts, le message. Un bouton **J'arrive** pose un point de route sur le cadavre et prévient
    l'appelant. L'appelant voit la liste de ceux qui arrivent.
 4. **Sur Discord**, l'appel s'écrit dans le fil Discord de la guilde. Le bot de la guilde en fait une
    carte lisible dans un salon dédié (`#alertes-pvp`), la met à jour (morts, qui arrive, réglé) et
@@ -123,16 +128,23 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   Wowhead, un `#SOS` tromperait sa lecture). Le bot échappe lui-même mentions et mise en forme.
 - **Deux persos du même nom sur deux royaumes de la guilde** : rare, accepté ; la clé d'un appel est
   `nom + numéro`.
-- **Position illisible** (pas de coordonnées du cadavre) : **OUVERT, à trancher par le user** —
-  appeler avec la zone seule, ou pas d'appel. Sur le PTR Retail (M3), mort avant « Libérer », la
-  position du joueur était lisible : le cas reste possible (carte sans coordonnées), pas mesuré sur
-  Forever. En attendant, la grammaire validée exige les coordonnées : pas de ligne (raison `pos`).
+- **Position illisible** (pas de coordonnées du cadavre) : l'appel part avec **la zone seule** (D14).
+  Une mort suivante sans coordonnées garde le point de l'appel s'il est sur la même carte ; sur une
+  autre carte, elle part en zone seule (un point dans la mauvaise zone serait pire que pas de point).
+  Sans carte du tout (rien de lisible), pas d'appel : l'encart le dit. Sur le PTR Retail (M3), mort
+  avant « Libérer », la position du joueur était lisible : le cas reste rare, pas mesuré sur Forever.
+- **Zone seule chez celui qui reçoit** (T4) : l'alerte montre la zone, et « J'arrive » ne pose PAS de
+  point de route (il n'y a pas de point) ; il prévient l'appelant quand même.
 - **Après « Libérer »**, le fantôme apparaît chez la gardienne des âmes, peut-être sur une autre carte.
   La position envoyée est celle lue **mort**, avant de libérer (mesurée identique au cadavre sur le
   PTR Retail, M3) ; un fantôme ne prête jamais sa position, ni sa carte ni sa zone.
-- **« Kill feed »** (tous les joueurs du récap, nom et classe, au lieu d'un seul tueur) : idée du user
-  du 2026-10-27, **OUVERT, pas décidée**. Mêmes limites que le tueur (10 derniers coups, invocation
-  sans son maître, soins jamais vus) ; changerait le contrat (`k`/`c` = un seul tueur) et le bot.
+- **Camper en équipe** (D15) : l'appel liste TOUS les joueurs qui nous ont frappés, pas un seul tueur.
+  Chaque mort apporte les joueurs nommés de son récap ; ceux de la dernière mort passent devant, chacun
+  une fois (reconnu par son GUID, qui ne part jamais sur le fil), **5 au plus** dans l'appel, 3 noms
+  dans l'encart (« +2 » pour le reste). Mêmes limites que le tueur : les 10 derniers coups du récap,
+  une invocation sans son maître ne nomme personne, un soigneur ennemi qui ne frappe pas n'y est
+  jamais. Un joueur caché par le jeu (`hideCaster`) ou au nom secret n'est pas listé. Trop de noms
+  pour la ligne : les derniers sont retirés, l'appel part toujours.
 
 ## Décisions
 
@@ -156,6 +168,12 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   (l'intention ne change pas, la règle si) : la première version ne lisait que le coup fatal, et le
   user a été tué par un chevalier de la mort dont l'Abomination (`Creature-`) portait ce coup :
   l'encart se serait caché. La règle est désormais : un GUID `Player-…` **n'importe où** dans le récap.
+- **D14** (user, 2026-10-27, « oui la zone si illisible ») — **Position illisible : l'appel part avec
+  la zone seule**, au lieu de ne pas partir.
+- **D15** (user, 2026-10-27, « le kill feed doit avoir plusieurs tueurs s'ils se font camper par une
+  équipe ») — **L'appel nomme plusieurs tueurs.** Précisé par l'agent, à confirmer par le user : les
+  joueurs de la dernière mort devant, chacun une fois, 5 au plus dans l'appel, 3 noms dans l'encart ;
+  deux listes alignées dans la ligne (`kXyz,Abc cROGUE,MAGE`, section « Contrat »).
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
@@ -205,7 +223,8 @@ Tests headless : `tests/test_wpp_*.lua` de l'outillage (le banc et l'addon atter
 règle de CLAUDE.md).
 
 1. [test] Une ligne Discord construite puis relue redonne exactement le nom, le numéro, la zone, les
-   coordonnées, le nombre de morts, le tueur, sa classe et le message.
+   coordonnées (ou leur absence, D14), le nombre de morts, les tueurs et leurs classes (D15) et le
+   message ; 5 tueurs aux noms les plus longs tiennent encore en 255 octets (les derniers retirés).
 2. [test] Une ligne avec un message de 300 caractères, des `|`, `[ ]`, `#SOS9` et des retours à la
    ligne fait au plus 255 octets et ne contient aucun de ces caractères dans le message ; le message
    est coupé, jamais la queue `#SOS<n> m… d…`.
@@ -227,7 +246,8 @@ règle de CLAUDE.md).
     dessous. Observateur : le user, compte A.
 11. [human] Clic sur Appeler : sur le compte B, une alerte apparaît avec la zone et les coordonnées ;
     « J'arrive » pose un point de route sur le cadavre de A ; A voit B dans « en route ». Témoin : le
-    point de route mène bien à l'endroit où A est mort (A le dit).
+    point de route mène bien à l'endroit où A est mort (A le dit). Un appel en zone seule (D14) ne
+    pose pas de point de route : l'alerte montre la zone.
 12. [human] Sur Discord : la carte apparaît dans `#alertes-pvp` avec le nom du perso de A, la ligne
     brute disparaît du salon relié et du fil Discord en jeu. Observateur : le user, sur Discord.
 13. [human] « C'est réglé » : l'alerte disparaît chez B, la carte passe à « réglé ». Sans clic, au
@@ -238,29 +258,42 @@ règle de CLAUDE.md).
 Deux formats, lus par d'autres que l'addon : le gelé, c'est ce qui suit. Toute évolution s'ajoute en
 fin de ligne et se prouve par un test de relecture des lignes d'avant.
 
+**Changé en place le 2026-10-27** (décision de l'agent, à confirmer par le user), AVANT toute release
+et avant tout lecteur (le bot n'est pas écrit) : coordonnées facultatives (D14) et listes de tueurs
+(D15). La version du message d'addon reste 1. La forme à un tueur avec coordonnées n'a pas bougé d'un
+octet : les exemples 1 à 4 sortent identiques (`tests/test_wpp_lines.lua`). Seul changement de
+lecture : une classe sans nom (`c` sans `k`) était relue, elle est désormais refusée.
+
 ### Ligne du fil Discord (lue par le bot et par des humains)
 
 Texte lisible sans le bot (le bot peut être éteint), sans `[ ]` ni `|`, noms sans royaume. Trois
 formes, chacune sur une ligne :
 
 ```
-SOS <Perso> <Zone> (<x>, <y>) #SOS<n> m<uiMapID> d<morts>[ k<Tueur>][ c<CLASSE>][ : <message>]
+SOS <Perso> <Zone>[ (<x>, <y>)] #SOS<n> m<uiMapID> d<morts>[ k<T1>,<T2>…][ c<C1>,<C2>…][ : <message>]
 OMW <Répondant> > <Perso> #SOS<n>
 END <Perso> #SOS<n>
 ```
 
-- `<Perso>`, `<Répondant>`, `<Tueur>` : nom de personnage seul, sans royaume ni espace.
+- `<Perso>`, `<Répondant>`, `<T1>…` : nom de personnage seul, sans royaume, ni espace, ni virgule.
 - `<Zone>` : nom de la zone dans la langue de l'appelant (peut contenir espaces et apostrophes).
   **Garanti par l'addon** : ni `( ) # | [ ]` dans la zone, ni `# | [ ]` ni caractère de contrôle dans
-  le message ; le lecteur coupe donc la zone au premier ` (` et la queue au `#SOS`. Une ligne dont le
-  message contient l'un d'eux n'est pas une ligne de l'addon (refusée à la relecture).
-- `<x>`, `<y>` : coordonnées en pourcentage de la carte de zone, une décimale, point décimal. Dans le
-  code, x et y sont des FRACTIONS (0..1, comme `C_Map.GetPlayerMapPosition`) : le pourcentage
-  n'existe que dans le texte.
+  le message ; le lecteur coupe donc la queue au ` #SOS`, puis détache ` (<x>, <y>)` en fin de zone
+  s'il y est. Une parenthèse restée dans la zone, ou un de ces caractères dans le message : ce n'est
+  pas une ligne de l'addon (refusée à la relecture).
+- `(<x>, <y>)` : coordonnées en pourcentage de la carte de zone, une décimale, point décimal ;
+  **absentes** quand elles sont illisibles (D14 : zone seule). Dans le code, x et y sont des FRACTIONS
+  (0..1, comme `C_Map.GetPlayerMapPosition`) : le pourcentage n'existe que dans le texte. Une seule
+  des deux, ou au-delà de 100 : refusé.
+- `k<T1>,<T2>…` et `c<C1>,<C2>…` (D15) : les tueurs, 5 au plus, les plus récents devant, en deux
+  listes **alignées** séparées par des virgules : `c` a exactement autant d'éléments que `k`, `-` pour
+  une classe inconnue, et `c` est absent si aucune classe n'est connue. Un `c` sans `k`, des listes de
+  longueurs différentes, un nom vide : refusé. Si la ligne manque de place, les derniers tueurs sont
+  retirés (la tête garde au plus 200 octets, le message prend le reste).
 - `<n>` : numéro d'appel du personnage (compteur sauvegardé, croissant). Clé d'un appel = `Perso` + `n`.
 - `<uiMapID>` : carte de zone (`C_Map.GetBestMapForUnit("player")` à la mort).
 - `<morts>` : morts depuis l'ouverture de l'appel (1 à la première ligne).
-- `<CLASSE>` : jeton de classe anglais (`ROGUE`, `MAGE`…), si connu.
+- `<C1>…` : jeton de classe anglais (`ROGUE`, `MAGE`…), ou `-`.
 - Une ligne `SOS` avec un `#SOS<n>` déjà vu **depuis moins de 15 minutes** (D11) = mise à jour de cet
   appel (morts, message). Au-delà, c'est un nouvel appel : le numéro vit dans les SavedVariables du
   poste, et un autre poste (ou une base effacée) repart de 1.
@@ -272,7 +305,12 @@ SOS Gnomi Forêt d'Elwynn (42.1, 65.3) #SOS7 m1429 d1 kXyz cROGUE : 3 voleurs au
 SOS Gnomi Forêt d'Elwynn (42.1, 65.3) #SOS7 m1429 d3 kXyz cROGUE : 3 voleurs au pont
 OMW Gnomette > Gnomi #SOS7
 END Gnomi #SOS7
+SOS Gnomi Forêt d'Elwynn #SOS8 m1429 d1 kXyz cROGUE
+SOS Gnomi Forêt d'Elwynn (42.1, 65.3) #SOS7 m1429 d3 kXyz,Abc,Def cROGUE,MAGE,- : 3 voleurs au pont
 ```
+
+Les deux derniers (ajoutés le 2026-10-27) : zone seule (D14), et trois tueurs dont un de classe
+inconnue (D15). Le bot fige les six mêmes.
 
 Le lecteur de commandes du bot (`WTB […] … #CO<n>`) ne lit aucune de ces lignes.
 
@@ -282,15 +320,17 @@ Préfixe `WPPolice`, canal `GUILD`. Premier champ = **version du format** (1) ; 
 version qu'il ne connaît pas. Champs séparés par une tabulation, texte libre privé de tabulations et
 de `|`, 255 octets au plus.
 
-- `1 SOS <n> <uiMapID> <x> <y> <morts> <tueur|-> <CLASSE|-> <message>` — appel ou mise à jour
+- `1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>` — appel ou mise à jour
 - `1 OMW <n> <Perso appelant>` — j'arrive (l'émetteur est le répondant)
 - `1 END <n>` — réglé (l'émetteur est l'appelant)
 
 Nombre de champs exact par sorte (10, 4, 3) : un message décalé est refusé, pas relu de travers.
-`<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord. `<message>` peut être vide (le champ
-reste). Le tueur s'écrit sans royaume (il n'est qu'affiché) ; l'appelant d'un `OMW` **garde** son
-royaume (`Nom-Royaume`, comme le rend `CHAT_MSG_ADDON` entre royaumes) : il sert à reconnaître
-l'appel, et le royaume ne s'affiche jamais.
+`<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord, ou `-` tous les deux (zone seule,
+D14). `<tueurs>`, `<CLASSES>` : les deux listes alignées de la ligne Discord (`Xyz,Abc,Def`,
+`ROGUE,MAGE,-`), `-` pour une liste vide ; des tueurs sans aucune classe connue = `-` en `<CLASSES>`.
+`<message>` peut être vide (le champ reste). Les tueurs s'écrivent sans royaume (ils ne sont
+qu'affichés) ; l'appelant d'un `OMW` **garde** son royaume (`Nom-Royaume`, comme le rend
+`CHAT_MSG_ADDON` entre royaumes) : il sert à reconnaître l'appel, et le royaume ne s'affiche jamais.
 
 ### Données sauvegardées
 
@@ -331,5 +371,7 @@ Une tâche = une session, avec son critère.
   `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
   recopie de l'émetteur du SOS), alors que l'appelant connaît `UnitName("player")` sans royaume :
   comparer des noms COMPLETS normalisés des deux côtés, sinon l'appelant ne voit jamais qui arrive.
+  L'alerte montre la liste des tueurs (`killers` de `Line.Decode`) ; un appel sans coordonnées (x, y
+  nil) ne pose pas de point de route (D14).
 - **T5** — Bot : sa spec, son dépôt.
 - **T6** — Au lancement : mesures M1 à M8 au banc, puis critères 10 à 13.

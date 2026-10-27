@@ -17,6 +17,7 @@ local T = {
     ["Tueur : %s (%s)"]               = "Killer: %s (%s)",
     ["Tueur : %s"]                    = "Killer: %s",
     ["Tueur : un joueur"]             = "Killer: a player",
+    ["Tueurs : %s"]                   = "Killers: %s",
     ["zone inconnue"]                 = "unknown zone",
     ["position inconnue"]             = "position unknown",
     ["Message (facultatif)"]          = "Message (optional)",

@@ -3,7 +3,9 @@
 --   - la ligne du fil Discord de la guilde, lue par le bot et par des humains ;
 --   - le message d'addon de guilde (préfixe WPPolice), lu par les autres copies de l'addon.
 -- Ce qui est gelé, c'est la forme produite : toute évolution s'ajoute en fin de ligne et un test
--- prouve que les lignes d'avant se relisent encore (tests/test_wpp_lines.lua).
+-- prouve que les lignes d'avant se relisent encore (tests/test_wpp_lines.lua). Seule exception,
+-- datée : le 2026-10-27, AVANT toute release et tout lecteur, la v1 a reçu la zone seule (D14) et
+-- plusieurs tueurs (D15) ; la forme à un tueur, avec coordonnées, est restée identique à l'octet.
 --
 -- Logique pure : rien n'est appelé au chargement, et les fonctions ne touchent au jeu que par
 -- `issecretvalue` quand il existe. Les tests headless chargent ce fichier tel quel.
@@ -19,7 +21,9 @@ NS.Line = Line
 Line.MAX_BYTES = 255        -- une ligne de chat comme un message d'addon
 Line.PREFIX = "WPPolice"    -- préfixe des messages d'addon de guilde
 Line.WIRE_VERSION = "1"     -- premier champ du message d'addon ; un lecteur ignore une autre version
+Line.MAX_KILLERS = 5        -- tueurs au plus dans un appel (D15)
 
+local HEAD_MAX = 200        -- octets de tête au plus une fois les tueurs ajoutés : le message garde sa place
 local TAB = string.char(9)
 local WIRE_FIELDS = { SOS = 10, OMW = 4, END = 3 }
 
@@ -58,7 +62,9 @@ local function clean(s, extra)
 end
 Line.Clean = clean
 
-local RESERVED = "[%s%c|%[%]#:]"
+-- `,` sépare les tueurs d'une liste : jamais dans un nom (le jeu n'en produit pas, une ligne forgée
+-- décalerait l'alignement des noms et des classes).
+local RESERVED = "[%s%c|%[%]#:,]"
 
 -- Un nom à AFFICHER : sans royaume (règle du user : le pont entre royaumes reste invisible), sans
 -- blanc ni caractère réservé. nil si illisible ou vide.
@@ -110,30 +116,72 @@ local function withMessage(head, msg, sep)
     return head .. sep .. msg, msg
 end
 
--- Les champs communs d'un appel, validés ; nil + raison sinon. `c` : { n, map, x, y, deaths, killer,
--- class, msg } (+ who, zone pour la ligne Discord).
+-- Les champs communs d'un appel, validés : "xy" (coordonnées connues) ou "zone" (zone seule, D14) ;
+-- nil + raison sinon. Coordonnées ABSENTES ou illisibles toutes les deux = zone seule ; une seule des
+-- deux, ou hors de 0..1 (un pourcentage passé pour une fraction) = refus « pos ».
+-- `c` : { n, map, x, y, deaths, killers (ou killer + class), msg } (+ who, zone pour la ligne Discord).
 local function checkCall(c)
-    if not (isFraction(c.x) and isFraction(c.y)) then return nil, "pos" end
+    local hasX, hasY = readable(c.x), readable(c.y)
+    if (hasX or hasY) and not (isFraction(c.x) and isFraction(c.y)) then return nil, "pos" end
     if not (isCount(c.n, 1) and isCount(c.map, 1) and isCount(c.deaths, 1)) then return nil, "num" end
-    return true
+    return hasX and "xy" or "zone"
+end
+
+-- Les tueurs d'un appel (D15) : `c.killers` = { { name, class }, … }, ou le raccourci d'un seul tueur
+-- `c.killer` / `c.class`. Seuls les noms lisibles restent (sans royaume), MAX_KILLERS au plus ; une
+-- classe sans nom ne reste pas (elle n'a de sens qu'à côté d'un nom).
+local function killersOf(c)
+    local src = c.killers
+    if type(src) ~= "table" then src = { { name = c.killer, class = c.class } } end
+    local list = {}
+    for _, k in ipairs(src) do
+        local name = type(k) == "table" and shortName(k.name)
+        if name and #list < Line.MAX_KILLERS then list[#list + 1] = { name = name, class = classToken(k.class) } end
+    end
+    return list
+end
+
+-- Les `count` premiers tueurs en deux listes ALIGNÉES : noms « A,B », classes « ROGUE,- » (`-` =
+-- classe inconnue) ; pas de liste de classes (nil) si aucune n'est connue.
+local function lists(list, count)
+    local names, classes, known = {}, {}, false
+    for i = 1, count do
+        names[i] = list[i].name
+        classes[i] = list[i].class or "-"
+        if list[i].class then known = true end
+    end
+    return table.concat(names, ","), known and table.concat(classes, ",") or nil
+end
+
+-- Ajoute à `head` autant de tueurs que la tête en tient (HEAD_MAX), en retirant les derniers d'abord :
+-- un appel ne se perd jamais pour trop de tueurs.
+local function fitKillers(head, list, render)
+    for count = #list, 1, -1 do
+        local part = render(list, count)
+        if #head + #part <= HEAD_MAX then return head .. part end
+    end
+    return head .. render(list, 0)
+end
+
+local function discordKillers(list, count)
+    if count == 0 then return "" end
+    local names, classes = lists(list, count)
+    return " k" .. names .. (classes and " c" .. classes or "")
 end
 
 -- ===== Ligne du fil Discord =====
 
--- SOS <Perso> <Zone> (<x>, <y>) #SOS<n> m<uiMapID> d<morts>[ k<Tueur>][ c<CLASSE>][ : <message>]
+-- SOS <Perso> <Zone>[ (<x>, <y>)] #SOS<n> m<uiMapID> d<morts>[ k<T1>,<T2>…][ c<C1>,<C2>…][ : <message>]
 function Line.BuildSOS(c)
     local who = shortName(c.who)
     if not who then return nil, "who" end
     local ok, why = checkCall(c)
     if not ok then return nil, why end
-    local zone = clean(c.zone, "[%(%)]")
-    if zone == "" then return nil, "zone" end
-    local head = string.format("SOS %s %s (%s, %s) #SOS%d m%d d%d",
-        who, zone, pct(c.x), pct(c.y), c.n, c.map, c.deaths)
-    local killer = shortName(c.killer)
-    if killer then head = head .. " k" .. killer end
-    local class = classToken(c.class)
-    if class then head = head .. " c" .. class end
+    local where = clean(c.zone, "[%(%)]")
+    if where == "" then return nil, "zone" end
+    if ok == "xy" then where = string.format("%s (%s, %s)", where, pct(c.x), pct(c.y)) end
+    local head = string.format("SOS %s %s #SOS%d m%d d%d", who, where, c.n, c.map, c.deaths)
+    head = fitKillers(head, killersOf(c), discordKillers)
     if #head > Line.MAX_BYTES then return nil, "long" end
     return (withMessage(head, c.msg, " : "))
 end
@@ -152,17 +200,69 @@ function Line.BuildEND(caller, n)
     return string.format("END %s #SOS%d", c, n)
 end
 
-local SOS_HEAD = "^SOS (%S+) (.-) %((%d+%.%d), (%d+%.%d)%) #SOS(%d+) m(%d+) d(%d+)(.*)$"
+local SOS_HEAD = "^SOS (%S+) (.-) #SOS(%d+) m(%d+) d(%d+)(.*)$"
+
+-- « Zone (42.1, 65.3) » ou « Zone » seule (D14). La zone ne contient jamais de parenthèse : une
+-- parenthèse qui n'est pas celle des coordonnées fait refuser la ligne.
+local function parseWhere(where)
+    local zone, x, y = where:match("^(.-) %((%d+%.%d), (%d+%.%d)%)$")
+    if not zone then zone = where end
+    if zone == "" or zone:find("[%(%)]") then return nil end
+    if not x then return zone end
+    x, y = frac(x), frac(y)
+    if x > 1 or y > 1 then return nil end
+    return zone, x, y
+end
+
+-- (s .. ","):gmatch("(.-),") et non gmatch("([^,]*)") : même piège de Lua 5.1 que les tabulations.
+local function splitList(s)
+    local items = {}
+    for item in (s .. ","):gmatch("(.-),") do items[#items + 1] = item end
+    return items
+end
+
+-- Deux listes alignées (D15) : autant de classes que de noms, `-` = classe inconnue. Rend la liste
+-- { { name, class }, … }, ou nil si elles ne s'alignent pas, si un nom est vide ou réservé, si une
+-- classe n'est pas un jeton.
+local function killerList(names, classes)
+    names = splitList(names)
+    classes = classes and splitList(classes)
+    if classes and #classes ~= #names then return nil end
+    local list = {}
+    for i, raw in ipairs(names) do
+        local name = shortName(raw)
+        if name ~= raw then return nil end
+        local class = classes and classes[i]
+        if class == "-" then class = nil elseif class and not classToken(class) then return nil end
+        list[i] = { name = name, class = class }
+    end
+    return list
+end
+
+-- Les tueurs de la ligne, posés dans `t` (killers, et le raccourci killer / class du premier) ; rend
+-- la suite de la ligne, ou nil si elle est refusée (un `c` sans `k`, des listes mal alignées).
+local function parseKillers(t, rest)
+    local k, afterK = rest:match("^ k(%S+)(.*)$")
+    if k then rest = afterK end
+    local cl, afterC = rest:match("^ c(%S+)(.*)$")
+    if cl then rest = afterC end
+    t.killers = {}
+    if not k then return not cl and rest or nil end
+    local list = killerList(k, cl)
+    if not list then return nil end
+    t.killers, t.killer, t.class = list, list[1].name, list[1].class
+    return rest
+end
 
 local function parseSOS(text)
-    local who, zone, x, y, n, map, d, rest = text:match(SOS_HEAD)
+    local who, where, n, map, d, rest = text:match(SOS_HEAD)
     if not who then return nil end
-    local t = { kind = "SOS", who = who, zone = zone, x = frac(x), y = frac(y),
+    local zone, x, y = parseWhere(where)
+    if not zone then return nil end
+    local t = { kind = "SOS", who = who, zone = zone, x = x, y = y,
                 n = tonumber(n), map = tonumber(map), deaths = tonumber(d) }
-    local k, afterK = rest:match("^ k(%S+)(.*)$")
-    if k then t.killer, rest = k, afterK end
-    local cl, afterC = rest:match("^ c(%u+)(.*)$")
-    if cl then t.class, rest = cl, afterC end
+    rest = parseKillers(t, rest)
+    if not rest then return nil end
     local msg = rest:match("^ : (.*)$")
     if msg then
         -- BuildSOS ôte ces caractères du message : s'il en reste, la ligne n'est pas la nôtre.
@@ -190,15 +290,24 @@ end
 
 -- ===== Message d'addon de guilde =====
 -- Champs séparés par une tabulation, version en tête :
---   1 SOS <n> <uiMapID> <x> <y> <morts> <tueur|-> <CLASSE|-> <message>   (émetteur = l'appelant)
---   1 OMW <n> <appelant>                                                (émetteur = le répondant)
---   1 END <n>                                                           (émetteur = l'appelant)
+--   1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>   (émetteur = l'appelant)
+--   1 OMW <n> <appelant>                                                      (émetteur = le répondant)
+--   1 END <n>                                                                 (émetteur = l'appelant)
+-- <tueurs> et <CLASSES> : listes alignées séparées par des virgules, comme sur la ligne Discord.
+
+local function wireKillers(list, count)
+    if count == 0 then return TAB .. "-" .. TAB .. "-" end
+    local names, classes = lists(list, count)
+    return TAB .. names .. TAB .. (classes or "-")
+end
 
 function Line.EncodeSOS(c)
     local ok, why = checkCall(c)
     if not ok then return nil, why end
-    local head = table.concat({ Line.WIRE_VERSION, "SOS", c.n, c.map, pct(c.x), pct(c.y), c.deaths,
-        shortName(c.killer) or "-", classToken(c.class) or "-" }, TAB)
+    local x, y = "-", "-"
+    if ok == "xy" then x, y = pct(c.x), pct(c.y) end
+    local head = table.concat({ Line.WIRE_VERSION, "SOS", c.n, c.map, x, y, c.deaths }, TAB)
+    head = fitKillers(head, killersOf(c), wireKillers)
     local payload, msg = withMessage(head, c.msg, TAB)
     if msg == "" then payload = head .. TAB end
     return payload
@@ -230,15 +339,28 @@ local function num(s, min)
     return v
 end
 
+-- Les coordonnées du fil : « 42.1 » « 65.3 », ou « - » « - » (zone seule, D14). Rend (ok, x, y).
+local function decodeWhere(fx, fy)
+    if fx == "-" and fy == "-" then return true end
+    if not (fx:match("^%d+%.%d$") and fy:match("^%d+%.%d$")) then return false end
+    local x, y = frac(fx), frac(fy)
+    if x > 1 or y > 1 then return false end
+    return true, x, y
+end
+
 local function decodeSOS(f)
     local n, map, d = num(f[3], 1), num(f[4], 1), num(f[7], 1)
-    if not (n and map and d and f[5]:match("^%d+%.%d$") and f[6]:match("^%d+%.%d$")) then return nil end
-    local x, y = frac(f[5]), frac(f[6])
-    if x > 1 or y > 1 then return nil end
-    local killer = f[8] ~= "-" and shortName(f[8]) or nil
-    local class = f[9] ~= "-" and classToken(f[9]) or nil
-    return { kind = "SOS", n = n, map = map, x = x, y = y, deaths = d,
-             killer = killer, class = class, msg = clean(f[10]) }
+    local okXY, x, y = decodeWhere(f[5], f[6])
+    local killers
+    if f[8] == "-" then
+        killers = f[9] == "-" and {} or nil
+    else
+        killers = killerList(f[8], f[9] ~= "-" and f[9] or nil)
+    end
+    if not (n and map and d and okXY and killers) then return nil end
+    local first = killers[1] or {}
+    return { kind = "SOS", n = n, map = map, x = x, y = y, deaths = d, killers = killers,
+             killer = first.name, class = first.class, msg = clean(f[10]) }
 end
 
 -- Relit un message d'addon ; nil (sans erreur) pour une autre version, une autre sorte ou un nombre

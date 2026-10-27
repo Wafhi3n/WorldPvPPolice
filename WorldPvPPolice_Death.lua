@@ -74,29 +74,45 @@ local function hitKind(hit)
     return "unknown"
 end
 
--- Le tueur, lu dans TOUT le récap : { status = "player" | "npc" | "unknown", name, class, className }.
--- "player" dès qu'un coup vient d'un joueur, nommé d'après le PREMIER dans l'ordre du récap (le coup
--- fatal, sinon le plus récent) ; "npc" seulement si TOUS les coups sont lisibles et d'un monstre ;
--- sinon "unknown" (le joueur décide, D10). `playerInfo(guid)` rend (classe localisée, jeton de classe)
--- comme GetPlayerInfoByGUID.
+-- Un joueur du récap, une fois par GUID : il entre dans la liste au premier de ses coups qui montre son
+-- nom (un coup à `hideCaster`, un nom secret ne le montrent pas).
+local function notePlayer(players, byGuid, hit, guid, playerInfo)
+    local p = byGuid[guid]
+    if not p then
+        p = { key = guid }
+        p.class, p.className = classOf(guid, playerInfo)
+        byGuid[guid] = p
+    end
+    if p.name or field(hit, "hideCaster") == true then return end
+    p.name = Line.ShortName(field(hit, "sourceName"))
+    if p.name then players[#players + 1] = p end
+end
+
+-- Les tueurs, lus dans TOUT le récap : { status = "player" | "npc" | "unknown", players }.
+-- "player" dès qu'un coup vient d'un joueur ; `players` = TOUS les joueurs nommés du récap (D15, une
+-- équipe qui campe), une fois chacun, dans l'ordre du récap (le coup fatal, puis du plus récent au plus
+-- ancien) : { key = GUID, name, class, className }. "npc" seulement si TOUS les coups sont lisibles et
+-- d'un monstre ; sinon "unknown" (le joueur décide, D10). `playerInfo(guid)` rend (classe localisée,
+-- jeton de classe) comme GetPlayerInfoByGUID.
 function Death.KillerFrom(events, playerInfo)
-    if type(events) ~= "table" then return { status = "unknown" } end
-    local seen, unsure = 0, false
+    if type(events) ~= "table" then return { status = "unknown", players = {} } end
+    local seen, unsure, anyPlayer = 0, false, false
+    local players, byGuid = {}, {}
     for i = 1, MAX_EVENTS do
         local hit = field(events, i)
         if type(hit) ~= "table" then break end
         seen = i
         local kind, guid = hitKind(hit)
         if kind == "player" then
-            local k = { status = "player" }
-            if field(hit, "hideCaster") ~= true then k.name = Line.ShortName(field(hit, "sourceName")) end
-            k.class, k.className = classOf(guid, playerInfo)
-            return k
+            anyPlayer = true
+            notePlayer(players, byGuid, hit, guid, playerInfo)
+        elseif kind == "unknown" then
+            unsure = true
         end
-        if kind == "unknown" then unsure = true end
     end
-    if seen == 0 or unsure then return { status = "unknown" } end
-    return { status = "npc" }
+    if anyPlayer then return { status = "player", players = players } end
+    if seen == 0 or unsure then return { status = "unknown", players = {} } end
+    return { status = "npc", players = {} }
 end
 
 -- L'encart a-t-il sa place ? En guilde, hors instance (D6), et sauf mort SÛREMENT pas due à un joueur
@@ -131,11 +147,24 @@ end
 
 -- ===== Textes de l'encart =====
 
+local SHOWN = 3   -- noms affichés au plus dans l'encart ; les autres en « +N »
+
+-- « Tueur : Xyz (Voleur) » pour un seul ; « Tueurs : Xyz, Abc, Def +2 » pour plusieurs, les noms
+-- seuls, pour que la ligne tienne dans l'encart (D15).
 function Death.KillerText(k, L)
     if not k or k.status ~= "player" then return nil end
-    if k.name and k.className then return string.format(L["Tueur : %s (%s)"], k.name, k.className) end
-    if k.name then return string.format(L["Tueur : %s"], k.name) end
-    return L["Tueur : un joueur"]
+    local players = k.players or {}
+    local first = players[1]
+    if not first then return L["Tueur : un joueur"] end
+    if #players == 1 then
+        if first.className then return string.format(L["Tueur : %s (%s)"], first.name, first.className) end
+        return string.format(L["Tueur : %s"], first.name)
+    end
+    local names = {}
+    for i = 1, math.min(#players, SHOWN) do names[i] = players[i].name end
+    local text = table.concat(names, ", ")
+    if #players > SHOWN then text = text .. " +" .. (#players - SHOWN) end
+    return string.format(L["Tueurs : %s"], text)
 end
 
 function Death.WhereText(snap, L)

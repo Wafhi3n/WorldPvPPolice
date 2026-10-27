@@ -47,9 +47,9 @@ end
 local function now(p) return call(p.now) or 0 end
 
 -- ===== L'appel en cours =====
--- Call.active = { n, serial (la mort qui l'a ouvert), deaths = { [mort] = true }, snap, killer,
--- class, msg, sentAt, guildSig, discordAt, discordSig }. Jamais sauvegardé (spec, « Données
--- sauvegardées ») : un /reload l'oublie.
+-- Call.active = { n, serial (la mort qui l'a ouvert), deaths = { [mort] = true }, snap, killers =
+-- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, discordAt, discordSig }. Jamais
+-- sauvegardé (spec, « Données sauvegardées ») : un /reload l'oublie.
 
 function Call:IsActive()
     local a = self.active
@@ -83,13 +83,41 @@ local function nextNumber(p)
     return n, function() db.nextCall[key] = n + 1 end
 end
 
--- Ce que l'appel retient de cette mort : sa position et son tueur ; à défaut, ceux d'avant (une mort
--- de plus sans position lisible ne fait pas perdre celle de l'appel).
+-- La position de l'appel : celle de cette mort. Sans coordonnées, elle part en zone seule (D14), sauf
+-- sur la MÊME carte qu'un point déjà connu de l'appel, qu'on garde : un point dans la bonne zone vaut
+-- mieux que la zone seule, mais un point dans la mauvaise zone est pire. Sans carte du tout (rien de
+-- lisible), on garde ce qu'on avait.
+local function placeOf(a, snap)
+    if not (snap and snap.map) then return end
+    if snap.x and snap.y then
+        a.snap = snap
+    elseif not (a.snap and a.snap.x and a.snap.map == snap.map) then
+        a.snap = snap
+    end
+end
+
+-- Les tueurs de l'appel (D15) : ceux de cette mort d'abord, puis ceux des morts d'avant, une fois
+-- chacun (par GUID, qui ne part jamais sur le fil), MAX_KILLERS au plus : une équipe qui campe s'y
+-- retrouve, les plus récents devant.
+local function mergeKillers(a, players)
+    local list, seen = {}, {}
+    local function add(p)
+        local key = p.key or p.name
+        if p.name and not seen[key] and #list < Line.MAX_KILLERS then
+            seen[key] = true
+            list[#list + 1] = { key = p.key, name = p.name, class = p.class }
+        end
+    end
+    for _, p in ipairs(players) do add(p) end
+    for _, p in ipairs(a.killers or {}) do add(p) end
+    a.killers = list
+end
+
+-- Ce que l'appel retient de cette mort : sa position, ses tueurs, son message.
 local function absorb(a, state, serial, msg)
-    local snap = state.snap
-    if snap and snap.x and snap.y then a.snap = snap end
+    placeOf(a, state.snap)
     local k = state.killer
-    if k and k.status == "player" and k.name then a.killer, a.class = k.name, k.class end
+    mergeKillers(a, k and k.status == "player" and k.players or {})
     a.deaths[serial] = true
     a.msg = Line.Clean(msg)
 end
@@ -97,7 +125,7 @@ end
 local function fields(a, me)
     local s = a.snap
     return { who = me, n = a.n, map = s.map, zone = s.zone, x = s.x, y = s.y, deaths = count(a.deaths),
-             killer = a.killer, class = a.class, msg = a.msg }
+             killers = a.killers, msg = a.msg }
 end
 
 -- ===== Les deux sorties =====
@@ -146,7 +174,7 @@ function Call:Send(msg, origin, state, serial)
     local opening = not self:IsActive()
     local a = opening and { deaths = {}, serial = serial } or self.active
     absorb(a, state, serial, msg)
-    -- Pas d'appel sans coordonnées : OUVERT dans la spec (« Position illisible »).
+    -- Sans coordonnées, la zone seule part (D14) ; sans carte du tout, il n'y a rien à envoyer.
     if not a.snap then return { err = "pos" } end
     local consume
     if opening then
