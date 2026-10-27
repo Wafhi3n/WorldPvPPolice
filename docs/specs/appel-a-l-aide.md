@@ -295,7 +295,9 @@ OMW <Répondant> > <Perso> #SOS<n>
 END <Perso> #SOS<n>
 ```
 
-- `<Perso>`, `<Répondant>`, `<T1>…` : nom de personnage seul, sans royaume, ni espace, ni virgule.
+- `<Perso>`, `<Répondant>`, `<T1>…` : le PREMIER MOT du nom, sans royaume, ni espace, ni virgule.
+  Sur Forever un nom complet est « Prénom Nom » (mesuré le 2026-09-27) : la ligne n'en garde que le
+  prénom ; sur Retail, « Nom-Royaume » : elle garde le nom. Affiché seulement, jamais comparé.
 - `<Zone>` : nom de la zone dans la langue de l'appelant (peut contenir espaces et apostrophes).
   **Garanti par l'addon** : ni `( ) # | [ ]` dans la zone, ni `# | [ ]` ni caractère de contrôle dans
   le message ; le lecteur coupe donc la queue au ` #SOS`, puis détache ` (<x>, <y>)` en fin de zone
@@ -348,9 +350,11 @@ Nombre de champs exact par sorte (10, 4, 3) : un message décalé est refusé, p
 `<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord, ou `-` tous les deux (zone seule,
 D14). `<tueurs>`, `<CLASSES>` : les deux listes alignées de la ligne Discord (`Xyz,Abc,Def`,
 `ROGUE,MAGE,-`), `-` pour une liste vide ; des tueurs sans aucune classe connue = `-` en `<CLASSES>`.
-`<message>` peut être vide (le champ reste). Les tueurs s'écrivent sans royaume (ils ne sont
-qu'affichés) ; l'appelant d'un `OMW` **garde** son royaume (`Nom-Royaume`, comme le rend
-`CHAT_MSG_ADDON` entre royaumes) : il sert à reconnaître l'appel, et le royaume ne s'affiche jamais.
+`<message>` peut être vide (le champ reste). Les tueurs s'écrivent au premier mot (ils ne sont
+qu'affichés) ; l'appelant d'un `OMW` s'écrit en **nom complet**, tel que `CHAT_MSG_ADDON` l'a donné
+comme émetteur du `SOS` : « Prénom Nom » sur Forever (une espace, pas de royaume), « Nom-Royaume »
+sur Retail. Il sert à reconnaître l'appel ; le royaume et le nom de famille ne s'affichent jamais dans
+une ligne. Nom du fil : mots séparés d'une espace, ni blanc au bord, ni tabulation, ni `| [ ] # : ,`.
 
 ### Données sauvegardées
 
@@ -395,9 +399,10 @@ Une tâche = une session, avec son critère.
   inatteignable ; la fenêtre de mort décompte pourtant `GetReleaseTimeRemaining()` (lu dans la source) :
   à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc.
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
-  `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
-  recopie de l'émetteur du SOS), alors que l'appelant connaît `UnitName("player")` sans royaume :
-  comparer des noms COMPLETS normalisés des deux côtés, sinon l'appelant ne voit jamais qui arrive.
+  `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en nom COMPLET (le répondant le
+  recopie de l'émetteur du SOS : « Prénom Nom » sur Forever, « Nom-Royaume » sur Retail), alors que
+  `UnitName("player")` ne rend que le prénom : comparer des noms COMPLETS des deux côtés (corrigé le
+  2026-10-27 : la note ne connaissait que la forme Retail), sinon l'appelant ne voit jamais qui arrive.
   L'alerte montre la liste des tueurs (`killers` de `Line.Decode`) ; un appel sans coordonnées (x, y
   nil) ne pose pas de point de route (D14).
 - **T5** — Bot : sa spec, son dépôt.

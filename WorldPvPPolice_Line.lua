@@ -66,22 +66,34 @@ Line.Clean = clean
 -- décalerait l'alignement des noms et des classes).
 local RESERVED = "[%s%c|%[%]#:,]"
 
--- Un nom à AFFICHER : sans royaume (règle du user : le pont entre royaumes reste invisible), sans
--- blanc ni caractère réservé. nil si illisible ou vide.
+-- DEUX FORMES DE NOM COMPLET, selon le client (le serveur s'en sert partout : émetteur de
+-- CHAT_MSG_ADDON, cible d'un chuchotement) :
+--   - Forever : « Prénom Nom », une ESPACE, jamais de royaume (UnitName rend prénom, nom de famille ;
+--     mesuré le 2026-09-27, skill public wow-forever-api) ;
+--   - Retail / Midnight (le PTR, 2e cible jusqu'au lancement) : « Nom-Royaume ».
+
+-- Un nom à AFFICHER dans une ligne : le premier mot, sans royaume (règle du user : le pont entre
+-- royaumes reste invisible) ni nom de famille (la ligne Discord n'a pas d'espace dans un nom), sans
+-- caractère réservé. nil si illisible ou vide. Jamais pour COMPARER : plusieurs joueurs partagent un
+-- prénom.
 local function shortName(name)
     if not isText(name) then return nil end
-    name = name:match("^([^%-]+)")
+    name = name:match("^([^%-%s]+)")
     if not name or name:find(RESERVED) then return nil end
     return name
 end
 Line.ShortName = shortName
 
--- Un nom sur le FIL entre copies de l'addon : garde le royaume (« Nom-Royaume » : c'est ce que rend
--- CHAT_MSG_ADDON entre royaumes, et ce qui sert à reconnaître l'appelant).
+-- Un nom sur le FIL entre copies de l'addon : le nom COMPLET tel que CHAT_MSG_ADDON le rend (l'une ou
+-- l'autre forme), qui sert à reconnaître l'appelant. Des mots séparés d'UNE espace ; ni tabulation
+-- (séparateur du fil), ni `| [ ] # : ,`, ni caractère de contrôle.
+local WIRE_RESERVED = "[%c|%[%]#:,]"
 local function wireName(name)
-    if not isText(name) or name == "" or name:find(RESERVED) then return nil end
+    if not isText(name) or name == "" or name:find(WIRE_RESERVED) then return nil end
+    if name:find("^%s") or name:find("%s$") or name:find("%s%s") then return nil end
     return name
 end
+Line.WireName = wireName
 
 local function classToken(c)
     if isText(c) and c:match("^%u+$") then return c end
