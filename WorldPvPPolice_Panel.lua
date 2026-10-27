@@ -75,7 +75,9 @@ function Panel:Build()
     f.title = text(f, "GameFontNormal", "TOP", nil, -18)
     f.title:SetText(L["Appeler la guilde à l'aide ?"])
     f.killer = text(f, "GameFontHighlightSmall", "BOTTOM", f.title, -6)
+    f.killer:SetWordWrap(false)   -- « Tueurs : A, B, C +2 » sur une ligne : l'encart a une hauteur fixe
     f.where = text(f, "GameFontHighlightSmall", "BOTTOM", f.killer, -3)
+    f.where:SetWordWrap(false)
     f.box = buildMessageBox(f)
     f.call = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.call:SetSize(110, 22)   -- « Mettre à jour », « Aktualisieren » pendant un appel en cours

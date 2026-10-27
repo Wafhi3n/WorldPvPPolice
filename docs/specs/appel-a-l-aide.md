@@ -243,13 +243,17 @@ règle de CLAUDE.md).
 10. [human] Mort tuée par un joueur en extérieur : l'encart apparaît sous la fenêtre de mort, avec
     « Tueur : <nom> (<classe>) ». Témoin : une mort par un monstre, sans encart. Puis B offre une
     résurrection : la fenêtre de B se voit en entier, bouton Accepter cliquable, l'encart passe
-    dessous. Observateur : le user, compte A.
+    dessous. Observateur : le user, compte A. Si le banc a deux persos de l'autre faction (D15) : une
+    mort sous les coups des deux affiche « Tueurs : <nom1>, <nom2> » sur UNE ligne, et la ligne du lieu
+    ne touche pas la case du message.
 11. [human] Clic sur Appeler : sur le compte B, une alerte apparaît avec la zone et les coordonnées ;
     « J'arrive » pose un point de route sur le cadavre de A ; A voit B dans « en route ». Témoin : le
     point de route mène bien à l'endroit où A est mort (A le dit). Un appel en zone seule (D14) ne
     pose pas de point de route : l'alerte montre la zone.
 12. [human] Sur Discord : la carte apparaît dans `#alertes-pvp` avec le nom du perso de A, la ligne
-    brute disparaît du salon relié et du fil Discord en jeu. Observateur : le user, sur Discord.
+    brute disparaît du salon relié et du fil Discord en jeu. Observateur : le user, sur Discord. La
+    carte montre la liste des tueurs de la ligne (D15) ; un appel en zone seule (D14), s'il se
+    produit, montre la zone sans coordonnées.
 13. [human] « C'est réglé » : l'alerte disparaît chez B, la carte passe à « réglé ». Sans clic, au
     bout de 15 minutes, l'alerte disparaît chez B.
 
