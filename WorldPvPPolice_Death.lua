@@ -6,8 +6,11 @@
 --
 -- Le tueur : le récap de mort (C_DeathRecap.GetRecapEvents(), la liste derrière le bouton
 -- « Récapitulatif » de la fenêtre de mort). events[1] est le coup fatal (Blizzard_DeathRecap le marque
--- `causedDeath`), et Blizzard lit lui-même son `sourceGUID` sur Forever (Blizzard_PTRFeedback_Events).
--- Le journal de combat, lui, est fermé aux addons sur Forever. Jamais mesuré en jeu : M1 de la spec.
+-- `causedDeath`), puis du plus récent au plus ancien. Le journal de combat, lui, est fermé aux addons
+-- sur Forever. Mesuré par le user sur le PTR RETAIL 12.1.7.70493 le 2026-10-27, PAS sur Forever (M1) :
+-- 10 événements, tout lisible ; tué par un chevalier de la mort, le coup fatal venait de son
+-- Abomination (`Creature-`), et le joueur n'apparaissait qu'aux coups 2+. D'où la lecture de TOUT le
+-- récap, pas du seul coup fatal.
 local _, NS = ...
 local Line = NS.Line
 
@@ -44,9 +47,11 @@ local function isMapId(v)
     return readable(v) and type(v) == "number" and v >= 1 and v == math.floor(v)
 end
 
--- Ce que dit le GUID du coup fatal. Un familier (`Pet-`) appartient peut-être à un joueur, sans
--- moyen de savoir lequel : « inconnu », donc l'encart s'ouvre quand même (D10).
+-- Ce que dit le GUID d'un coup. Un familier (`Pet-`) appartient peut-être à un joueur, sans moyen de
+-- savoir lequel : « inconnu », donc l'encart s'ouvre quand même (D10). Une invocation (Abomination,
+-- goule, totem…) a un GUID `Creature-` : seul son maître, s'il a frappé lui aussi, dit « joueur ».
 local NPC_KINDS = { Creature = true, Vehicle = true, GameObject = true }
+local MAX_EVENTS = 50   -- borne de la lecture du récap (10 coups mesurés sur le PTR Retail)
 
 local function classOf(guid, playerInfo)
     local localized, token = call(playerInfo, guid)
@@ -57,22 +62,41 @@ local function classOf(guid, playerInfo)
     return token
 end
 
--- Le tueur, lu dans le récap : { status = "player" | "npc" | "unknown", name, class, className }.
--- `playerInfo(guid)` rend (classe localisée, jeton de classe) comme GetPlayerInfoByGUID.
+-- Un coup du récap : "player" (+ son GUID), "npc" (monstre, invocation, véhicule, objet, chute,
+-- noyade), ou "unknown" (familier, GUID absent, secret ou d'une sorte inattendue).
+local function hitKind(hit)
+    if field(hit, "event") == "ENVIRONMENTAL_DAMAGE" then return "npc" end
+    local guid = field(hit, "sourceGUID")
+    if type(guid) ~= "string" then return "unknown" end
+    local kind = guid:match("^(%a+)%-")
+    if kind == "Player" then return "player", guid end
+    if NPC_KINDS[kind] then return "npc" end
+    return "unknown"
+end
+
+-- Le tueur, lu dans TOUT le récap : { status = "player" | "npc" | "unknown", name, class, className }.
+-- "player" dès qu'un coup vient d'un joueur, nommé d'après le PREMIER dans l'ordre du récap (le coup
+-- fatal, sinon le plus récent) ; "npc" seulement si TOUS les coups sont lisibles et d'un monstre ;
+-- sinon "unknown" (le joueur décide, D10). `playerInfo(guid)` rend (classe localisée, jeton de classe)
+-- comme GetPlayerInfoByGUID.
 function Death.KillerFrom(events, playerInfo)
     if type(events) ~= "table" then return { status = "unknown" } end
-    local first = field(events, 1)
-    if type(first) ~= "table" then return { status = "unknown" } end
-    if field(first, "event") == "ENVIRONMENTAL_DAMAGE" then return { status = "npc" } end
-    local guid = field(first, "sourceGUID")
-    if type(guid) ~= "string" then return { status = "unknown" } end
-    local kind = guid:match("^(%a+)%-")
-    if NPC_KINDS[kind] then return { status = "npc" } end
-    if kind ~= "Player" then return { status = "unknown" } end
-    local k = { status = "player" }
-    if field(first, "hideCaster") ~= true then k.name = Line.ShortName(field(first, "sourceName")) end
-    k.class, k.className = classOf(guid, playerInfo)
-    return k
+    local seen, unsure = 0, false
+    for i = 1, MAX_EVENTS do
+        local hit = field(events, i)
+        if type(hit) ~= "table" then break end
+        seen = i
+        local kind, guid = hitKind(hit)
+        if kind == "player" then
+            local k = { status = "player" }
+            if field(hit, "hideCaster") ~= true then k.name = Line.ShortName(field(hit, "sourceName")) end
+            k.class, k.className = classOf(guid, playerInfo)
+            return k
+        end
+        if kind == "unknown" then unsure = true end
+    end
+    if seen == 0 or unsure then return { status = "unknown" } end
+    return { status = "npc" }
 end
 
 -- L'encart a-t-il sa place ? En guilde, hors instance (D6), et sauf mort SÛREMENT pas due à un joueur
@@ -84,15 +108,23 @@ end
 
 -- Où est le cadavre : { map, zone, x, y } (x, y en FRACTIONS, absents si illisibles). La position du
 -- cadavre d'abord ; à défaut celle du joueur, qui n'a pas bougé tant qu'il n'a pas libéré (D1).
+-- Mesuré sur le PTR Retail (M3, pas sur Forever) : avant « Libérer », le cadavre rend nil et le joueur
+-- est lisible ; après, le cadavre rend la même position. Un FANTÔME n'est plus sur son cadavre (chez la
+-- gardienne des âmes, peut-être sur une autre carte) : jamais sa position, et rien du tout si le
+-- cadavre n'est pas sur sa carte (carte et zone seraient celles du fantôme). L'envoi, lui, part de la
+-- capture faite mort (NS.Call), jamais d'une capture de fantôme.
 function Death.Snapshot(p)
     local snap = {}
     local map = call(p.bestMap)
     if not isMapId(map) then return snap end
+    local x, y = call(p.corpsePos, map)
+    if not (isFraction(x) and isFraction(y)) then
+        if isTrue(call(p.isGhost)) then return snap end
+        x, y = call(p.playerPos, map)
+    end
     snap.map = map
     local zone = call(p.mapName, map)
     if readable(zone) and type(zone) == "string" and zone ~= "" then snap.zone = zone end
-    local x, y = call(p.corpsePos, map)
-    if not (isFraction(x) and isFraction(y)) then x, y = call(p.playerPos, map) end
     if isFraction(x) and isFraction(y) then snap.x, snap.y = x, y end
     return snap
 end
@@ -128,6 +160,7 @@ Death.probe = {
     mapName    = function(map) local info = C_Map.GetMapInfo(map); return info and info.name end,
     corpsePos  = function(map) return xy(C_DeathInfo.GetCorpseMapPosition(map)) end,
     playerPos  = function(map) return xy(C_Map.GetPlayerMapPosition(map, "player")) end,
+    isGhost    = function() return UnitIsGhost("player") end,
     inInstance = function() return (IsInInstance()) end,
     inGuild    = function() return IsInGuild() end,
     now        = function() return GetTime() end,

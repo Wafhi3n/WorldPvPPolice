@@ -6,10 +6,11 @@
 > l'addon ET de l'outillage) : `WorldPvPPolice_Line.lua`, critères 1, 2, 3 et 6 tenus en test
 > (`tests/test_wpp_lines.lua`, 44 vérifications, dont une vraie valeur secrète). **T2 codé le même
 > jour**, mêmes branches : `WorldPvPPolice_Discord.lua`, `_Death.lua` (logique pure + sondes),
-> `_Panel.lua` (l'encart) ; critère 5 tenu en test (`tests/test_wpp_death.lua`, 46 vérifications) ;
-> le bouton Appeler n'envoie encore rien (T3). Rien n'est mesuré en
-> jeu : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les mesures M1 à M8 se font au
-> banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
+> `_Panel.lua` (l'encart) ; critère 5 tenu en test (`tests/test_wpp_death.lua`). **Le même jour, le
+> user a mesuré M1 à M3 sur le PTR RETAIL** (12.1.7.70493, pas sur Forever : à refaire au banc) ; ses
+> mesures ont changé la lecture du tueur (tout le récap, D10 révisée) et la position d'un fantôme.
+> Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
+> mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
 
 ## Le problème
@@ -65,9 +66,16 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 
 - **On ne sait pas qui nous a tués** (récap de mort vide, illisible ou valeurs secrètes) : l'encart
   apparaît quand même en extérieur, sans la ligne « Tué par » ; c'est le joueur qui décide d'appeler.
-  Lu sur le coup fatal (`events[1]`) : GUID `Player-…` = joueur ; `Creature-`, `Vehicle-`,
-  `GameObject-` ou dégâts d'environnement (chute, noyade, lave) = pas un joueur, pas d'encart ; un
-  **familier** (`Pet-…`) = inconnu (son maître est peut-être un joueur) : encart.
+  Lu dans **tout le récap** (D10 révisée) : un GUID `Player-…` n'importe où = joueur, nommé d'après le
+  premier dans l'ordre du récap (le coup fatal, sinon le plus récent) ; pas d'encart seulement si
+  **tous** les coups sont lisibles et viennent de `Creature-`, `Vehicle-`, `GameObject-` ou de
+  l'environnement (chute, noyade, lave) ; un **familier** (`Pet-…`), un GUID secret ou absent = inconnu
+  (son maître est peut-être un joueur) : encart.
+- **Tué par une invocation** (Abomination ou goule de chevalier de la mort, totem, infernal…) : son GUID
+  est `Creature-`, comme un monstre (mesuré sur le PTR Retail, M1). Si son maître a frappé lui aussi
+  dans les derniers coups du récap (10 sur le PTR), c'est lui le tueur affiché. **Limite connue** :
+  tué par les seules invocations d'un joueur qui n'a jamais frappé dans ces coups, l'addon croit à un
+  monstre et l'encart n'apparaît pas.
 - **Le récap arrive après la fenêtre de mort** : il est relu une fois, 1 s plus tard ; un tueur
   devenu « monstre » referme l'encart.
 - **Mode hardcore** (fenêtre `HARDCORE_DEATH`, mort définitive) : pas d'encart.
@@ -99,9 +107,16 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   Wowhead, un `#SOS` tromperait sa lecture). Le bot échappe lui-même mentions et mise en forme.
 - **Deux persos du même nom sur deux royaumes de la guilde** : rare, accepté ; la clé d'un appel est
   `nom + numéro`.
-- **Position illisible** (pas de coordonnées du cadavre) : **OUVERT, à trancher après M3** — appeler
-  avec la zone seule, ou pas d'appel. En attendant, la grammaire validée exige les coordonnées : pas de
-  ligne (le code rend la raison `pos`).
+- **Position illisible** (pas de coordonnées du cadavre) : **OUVERT, à trancher par le user** —
+  appeler avec la zone seule, ou pas d'appel. Sur le PTR Retail (M3), mort avant « Libérer », la
+  position du joueur était lisible : le cas reste possible (carte sans coordonnées), pas mesuré sur
+  Forever. En attendant, la grammaire validée exige les coordonnées : pas de ligne (raison `pos`).
+- **Après « Libérer »**, le fantôme apparaît chez la gardienne des âmes, peut-être sur une autre carte.
+  La position envoyée est celle lue **mort**, avant de libérer (mesurée identique au cadavre sur le
+  PTR Retail, M3) ; un fantôme ne prête jamais sa position, ni sa carte ni sa zone.
+- **« Kill feed »** (tous les joueurs du récap, nom et classe, au lieu d'un seul tueur) : idée du user
+  du 2026-10-27, **OUVERT, pas décidée**. Mêmes limites que le tueur (10 derniers coups, invocation
+  sans son maître, soins jamais vus) ; changerait le contrat (`k`/`c` = un seul tueur) et le bot.
 
 ## Décisions
 
@@ -120,8 +135,11 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **D9** (user) — Morts répétées : la carte se met à jour au lieu d'en publier une autre (proposition 3
   de l'agent, acceptée).
 - **D10** (agent, validée par le user le 2026-10-27) — **L'encart n'apparaît que si un joueur nous a tués**, lu dans le récap
-  de mort (`C_DeathRecap.GetRecapEvents`, GUID `Player-…` du coup fatal) ; si le récap est illisible,
-  l'encart apparaît à chaque mort en extérieur.
+  de mort (`C_DeathRecap.GetRecapEvents`) ; si le récap est illisible, l'encart apparaît à chaque mort
+  en extérieur. **Révisée le 2026-10-27 par l'agent, après la mesure du user sur le PTR Retail**
+  (l'intention ne change pas, la règle si) : la première version ne lisait que le coup fatal, et le
+  user a été tué par un chevalier de la mort dont l'Abomination (`Creature-`) portait ce coup :
+  l'encart se serait caché. La règle est désormais : un GUID `Player-…` **n'importe où** dans le récap.
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
@@ -135,15 +153,27 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 
 ## Mesures à faire au banc (après le 2026-11-04)
 
-Aucune n'est faite. Le banc demande **un perso de l'autre faction** pour tuer (un duel ne tue pas).
+Aucune n'est faite **sur Forever**. Le banc demande **un perso de l'autre faction** pour tuer (un duel
+ne tue pas). M1 à M3 ont un précédent : mesurées par le user sur le **PTR Retail 12.1.7.70493** le
+2026-10-27, par des macros `/run` (même chemin qu'un clic d'addon), perso de guilde tué par un
+chevalier de la mort de la Horde, puis par un monstre. Ce précédent guide le code ; il ne remplace pas
+la mesure sur Forever.
 
 - **M1** — Après une mort par un joueur en extérieur : `C_DeathRecap.GetRecapEvents()` est-il rempli,
-  lisible (pas de valeurs secrètes), et le coup fatal a-t-il un `sourceGUID` `Player-…` et un
-  `sourceName` ? Et après une mort par un monstre ?
+  lisible (pas de valeurs secrètes), avec des `sourceGUID` `Player-…` et des `sourceName` ? Et après
+  une mort par un monstre ? *PTR Retail* : 10 événements, `[1]` = coup fatal, puis du plus récent au
+  plus ancien ; `sourceName`, `sourceGUID`, `spellName`, `amount` lisibles, aucune valeur secrète, en
+  PvP comme contre un monstre ; attaque en mêlée : `spellName` = nil. Coup fatal porté par une
+  invocation (`Creature-`) : 6 coups d'invocations, 4 du joueur. `GetPlayerInfoByGUID` du joueur :
+  `"DEATHKNIGHT"`, « Chevalière de la mort » (lisible, accordé au sexe de la cible).
 - **M2** — `C_Club.SendMessage` vers le fil Discord, **mort** : depuis notre bouton, depuis Entrée,
   et accroché au clic de « Libérer l'esprit ». Aucun `ADDON_ACTION_BLOCKED` (`/console taintLog 1`).
+  *PTR Retail*, par macro : marche en combat (sur un mannequin) et une fois mort ; sur Discord la ligne
+  porte le nom du compte, en jeu celui du perso. Pas mesuré : depuis notre bouton, Entrée, « Libérer ».
 - **M3** — Position : `C_Map.GetPlayerMapPosition` mort avant de libérer, et
-  `C_DeathInfo.GetCorpseMapPosition` après ; mêmes coordonnées ?
+  `C_DeathInfo.GetCorpseMapPosition` après ; mêmes coordonnées ? *PTR Retail* : mort avant de libérer,
+  joueur lisible et cadavre = nil ; après, cadavre lisible et identique (0.482, 0.417 les deux fois).
+  Pas vu : une gardienne des âmes sur une autre carte que le cadavre.
 - **M4** — Un guildien **sans Discord relié** à son Battle.net peut-il écrire dans le fil Discord ?
 - **M5** — Nom affiché sur Discord, case « afficher ce que je joue » cochée puis décochée.
 - **M6** — Les messages d'addon de guilde passent-ils **entre royaumes** de la même guilde ?
