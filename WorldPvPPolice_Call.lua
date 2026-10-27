@@ -117,11 +117,11 @@ end
 -- un même appel ; une mise à jour retenue part avec le geste suivant (critère 4). Rend (état, attente).
 function Call:ToDiscord(a, c, gesture)
     local p = self.probe
+    local club, stream = call(p.stream)
+    if not club then return "none" end
     local line = Line.BuildSOS(c)
     if not line then return "failed" end
     if a.discordSig == line then return "same" end
-    local club, stream = call(p.stream)
-    if not club then return "none" end
     if not gesture then return "nogesture" end
     if a.discordAt then
         local wait = Call.DISCORD_EVERY - (now(p) - a.discordAt)

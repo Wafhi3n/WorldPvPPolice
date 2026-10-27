@@ -10,7 +10,8 @@
 > user a mesuré M1 à M3 sur le PTR RETAIL** (12.1.7.70493, pas sur Forever : à refaire au banc) ; ses
 > mesures ont changé la lecture du tueur (tout le récap, D10 révisée) et la position d'un fantôme.
 > **T3 codé le même jour** : l'envoi (`WorldPvPPolice_Call.lua`, crochets dans `_Panel.lua`) ;
-> critère 4 tenu en test (`tests/test_wpp_call.lua`).
+> critère 4 tenu en test (`tests/test_wpp_call.lua`), branchement de l'encart (quel geste envoie quoi,
+> une seule fois) en test sur le vrai `_Panel.lua` devant une fenêtre factice (`tests/test_wpp_panel.lua`).
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -323,7 +324,8 @@ Une tâche = une session, avec son critère.
 - ~~**T3** — Envoi : Appeler / Entrée / Libérer, fil Discord + message de guilde, morts répétées (4).~~
   FAIT le 2026-10-27 : `WorldPvPPolice_Call.lua` (logique pure + sondes), crochets dans `_Panel.lua`
   (`StaticPopup_OnClick` de la fenêtre DEATH, PLAYER_ALIVE en fantôme) ; critère 4 tenu en test
-  (`tests/test_wpp_call.lua`). Restent : critère 9 (agent `api-gotcha-reviewer`, sur le mot du user)
+  (`tests/test_wpp_call.lua`) ; le branchement (clic puis libération auto = un envoi, rez acceptée =
+  rien, appel expiré = case vide) dans `tests/test_wpp_panel.lua`. Restent : critère 9 (agent `api-gotcha-reviewer`, sur le mot du user)
   et M2 au banc (envoi depuis notre bouton, Entrée et « Libérer »).
 - **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
   `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en `Nom-Royaume` (le répondant le
