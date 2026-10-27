@@ -12,6 +12,10 @@ local T = {
     ["version %s"]                    = "versión %s",
     ["Commandes :"]                   = "Comandos:",
     ["affiche la version"]            = "muestra la versión",
+    ["Alertes de la guilde : activées."]    = "Alertas de la hermandad: activadas.",
+    ["Alertes de la guilde : désactivées."] = "Alertas de la hermandad: desactivadas.",
+    ["état des alertes de la guilde"]       = "estado de las alertas de la hermandad",
+    ["recevoir ou non les appels des guildiens"] = "recibir o no las llamadas de la hermandad",
     -- Encart sous la fenêtre de mort
     ["Appeler la guilde à l'aide ?"]  = "¿Pedir ayuda a la hermandad?",
     ["Tueur : %s (%s)"]               = "Asesino: %s (%s)",

@@ -54,8 +54,8 @@ local function now(p) return call(p.now) or 0 end
 
 -- ===== L'appel en cours =====
 -- Call.active = { n, serial (la mort qui l'a ouvert), deaths = { [mort] = true }, snap, killers =
--- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, discordAt, discordSig }. Jamais
--- sauvegardé (spec, « Données sauvegardées ») : un /reload l'oublie.
+-- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, discordAt, discordSig, pending, enRoute =
+-- { { sender, name }, … } }. Jamais sauvegardé (spec, « Données sauvegardées ») : un /reload l'oublie.
 
 function Call:IsActive()
     local a = self.active
@@ -243,6 +243,34 @@ function Call:Send(msg, origin, state, serial)
         self.active = a
     end
     if sent then a.sentAt = now(p) end
+    return report
+end
+
+-- ===== Ceux qui arrivent, « C'est réglé » =====
+
+-- Un guildien répond « J'arrive » à MON appel numéro `n` (NS.Alert a reconnu mon nom complet) : il entre
+-- dans la liste « en route », une fois. Rend true s'il y entre.
+function Call:AddResponder(n, sender)
+    if not (self:IsActive() and self.active.n == n) then return false end
+    local a = self.active
+    a.enRoute = a.enRoute or {}
+    return NS.Alert.AddEnRoute(a.enRoute, sender)
+end
+
+-- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), et le fil Discord si une ligne de cet appel
+-- y est partie ou en cours (« END <moi> #SOS<n> », D12 ; sans suivi de son retour : rien n'en dépend).
+-- L'appel est clos tout de suite chez nous, qu'importe ce qui part. Rend { guild, discord } ou nil.
+function Call:Settle()
+    if not self:IsActive() then return nil end
+    local a, p = self.active, self.probe
+    self.active = nil
+    local report = { guild = "failed", discord = "none" }
+    local payload = Line.EncodeEND(a.n)
+    local result = payload and call(p.sendGuild, payload)
+    if readable(result) and (result == 0 or result == true) then report.guild = "sent" end
+    local club, stream = call(p.stream)
+    local line = (a.discordSig or a.pending) and club and Line.BuildEND(call(p.me), a.n)
+    if line then report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed" end
     return report
 end
 

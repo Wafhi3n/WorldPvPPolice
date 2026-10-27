@@ -12,6 +12,10 @@ local T = {
     ["version %s"]                    = "version %s",
     ["Commandes :"]                   = "Commands:",
     ["affiche la version"]            = "shows the version",
+    ["Alertes de la guilde : activées."]    = "Guild alerts: on.",
+    ["Alertes de la guilde : désactivées."] = "Guild alerts: off.",
+    ["état des alertes de la guilde"]       = "guild alerts status",
+    ["recevoir ou non les appels des guildiens"] = "receive guildmates' calls or not",
     -- Encart sous la fenêtre de mort
     ["Appeler la guilde à l'aide ?"]  = "Call your guild for help?",
     ["Tueur : %s (%s)"]               = "Killer: %s (%s)",

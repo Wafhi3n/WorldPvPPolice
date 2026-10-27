@@ -26,8 +26,9 @@ WorldPvPPolice.lua
 WorldPvPPolice_Line.lua
 
 # La mort : fil Discord de la guilde, tueur et cadavre (logique pure + sondes), envoi de l'appel,
-# encart sous la fenetre.
+# reception des appels des guildiens, encart sous la fenetre.
 WorldPvPPolice_Discord.lua
 WorldPvPPolice_Death.lua
 WorldPvPPolice_Call.lua
+WorldPvPPolice_Alert.lua
 WorldPvPPolice_Panel.lua
