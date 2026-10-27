@@ -172,8 +172,15 @@ function Call:ToDiscord(a, c, gesture)
     return "pending"
 end
 
+-- L'appel a changé (envoi, retour de la ligne, quelqu'un en route, réglé) : la fenêtre « Ton appel »
+-- (_CallerFrame.lua) suit.
+function Call:Changed()
+    if type(self.onChange) == "function" then pcall(self.onChange) end
+end
+
 function Call:Notify(state)
     if type(self.onDiscord) == "function" then pcall(self.onDiscord, state) end
+    self:Changed()
 end
 
 local function squash(s) return (s:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")) end
@@ -243,6 +250,7 @@ function Call:Send(msg, origin, state, serial)
         self.active = a
     end
     if sent then a.sentAt = now(p) end
+    self:Changed()
     return report
 end
 
@@ -254,7 +262,9 @@ function Call:AddResponder(n, sender)
     if not (self:IsActive() and self.active.n == n) then return false end
     local a = self.active
     a.enRoute = a.enRoute or {}
-    return NS.Alert.AddEnRoute(a.enRoute, sender)
+    if not NS.Alert.AddEnRoute(a.enRoute, sender) then return false end
+    self:Changed()
+    return true
 end
 
 -- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), et le fil Discord si une ligne de cet appel
@@ -271,6 +281,7 @@ function Call:Settle()
     local club, stream = call(p.stream)
     local line = (a.discordSig or a.pending) and club and Line.BuildEND(call(p.me), a.n)
     if line then report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed" end
+    self:Changed()
     return report
 end
 

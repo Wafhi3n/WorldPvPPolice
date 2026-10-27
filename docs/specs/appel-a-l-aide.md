@@ -17,7 +17,9 @@
 > plusieurs tueurs quand une équipe campe) et codées : le contrat v1 a changé AVANT toute release
 > (section « Contrat ») ; les quatre premiers exemples sont restés identiques à l'octet. **Critère 9
 > relu** par l'agent `api-gotcha-reviewer` le même jour, sur Forever et le PTR Retail ; d'où **D16**
-> (user) : une ligne Discord ne compte comme envoyée que revenue en jeu.
+> (user) : une ligne Discord ne compte comme envoyée que revenue en jeu. **T4 codé le même jour** :
+> la réception (alertes, « J'arrive », point de route, « Ton appel », « C'est réglé », `/wpp on|off`),
+> après avoir corrigé les noms : sur Forever un nom complet est « Prénom Nom », et le format le refusait.
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -127,8 +129,23 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   une ligne de mise à jour toutes les 2 minutes ; une mise à jour retenue part avec le geste suivant.
   Une mort relue « monstre » après coup ne compte plus. Sans position lisible, la mise à jour garde
   celle de l'appel ; sans tueur connu, le tueur de l'appel.
-- **Deux appels en même temps** (deux guildiens) : deux alertes empilées, 3 au plus à l'écran.
-- **Le guildien qui reçoit est en instance** : pas d'alerte (D6).
+- **Deux appels en même temps** (deux guildiens) : deux alertes empilées, 3 au plus à l'écran, les
+  plus récentes ; la croix d'une alerte l'écarte, et une mort de plus (même appel) la fait revenir.
+- **Le même guildien rappelle** (nouveau numéro) : son nouvel appel remplace l'ancien à l'écran.
+- **Le guildien qui reçoit est en instance** : pas d'alerte (D6) ; une alerte reçue dehors se cache en
+  entrant et revient en sortant, si elle n'a pas expiré.
+- **Où s'affichent les fenêtres** (choix de l'agent, à confirmer au banc) : une pile en haut, au centre
+  (`TOP`, 0, -20), au-dessus des fenêtres de Blizzard (la fenêtre de mort est à `TOP` -135) ; on la
+  déplace en tirant n'importe laquelle de ses fenêtres, et la position est gardée pour le compte. En
+  tête, « Ton appel » chez l'appelant ; dessous, les alertes reçues.
+- **« Ton appel »** (chez l'appelant, tant que l'appel est en cours) : numéro, morts, état Discord
+  (envoyé seulement une fois revenu, D16), qui est en route, bouton « C'est réglé ». Elle reste après
+  « Libérer l'esprit » : c'est là que l'appelant voit si son appel est parti (l'encart, lui, se ferme).
+- **Les lignes Discord « OMW » et « END »** partent au clic, sans suivi de leur retour : rien n'en
+  dépend (pas de délai, pas de « déjà envoyée »). Un `END` ne part sur Discord que si une ligne `SOS`
+  de l'appel y est partie ou en cours.
+- **Le nom affiché** d'un appelant ou d'un répondant : son nom complet sans royaume (« Prénom Nom »
+  sur Forever) ; dans une ligne Discord, le prénom seul (contrat).
 - **L'appelant se déconnecte** : l'appel expire (D11).
 - **Message trop long ou piégé** : coupé pour que la ligne entière tienne en 255 octets ; `|`, `[`,
   `]`, `#`, retours à la ligne et tabulations retirés (un `[objet]` ferait répondre au bot des liens
@@ -359,7 +376,8 @@ une ligne. Nom du fil : mots séparés d'une espace, ni blanc au bord, ni tabula
 ### Données sauvegardées
 
 `WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage : clé = GUID du perso,
-consommé seulement quand un appel part), `alerts` (on/off, compte ; T4).
+consommé seulement quand un appel part), `alerts` (on/off, compte ; `/wpp on|off`), `pile` (position
+de la pile des fenêtres, compte : `{ point, point relatif, x, y }`, absente = position par défaut).
 Aucun appel n'est sauvegardé : un `/reload` les oublie (ils expirent en 15 minutes de toute façon).
 
 ## Renvois
@@ -398,12 +416,13 @@ Une tâche = une session, avec son critère.
   T4, l'écran de l'appelant). Contesté : l'agent tient la libération automatique pour presque
   inatteignable ; la fenêtre de mort décompte pourtant `GetReleaseTimeRemaining()` (lu dans la source) :
   à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc.
-- **T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
-  `/wpp on|off` (7, 11, 13). ⚠️ Piège connu : `OMW.caller` arrive en nom COMPLET (le répondant le
-  recopie de l'émetteur du SOS : « Prénom Nom » sur Forever, « Nom-Royaume » sur Retail), alors que
-  `UnitName("player")` ne rend que le prénom : comparer des noms COMPLETS des deux côtés (corrigé le
-  2026-10-27 : la note ne connaissait que la forme Retail), sinon l'appelant ne voit jamais qui arrive.
-  L'alerte montre la liste des tueurs (`killers` de `Line.Decode`) ; un appel sans coordonnées (x, y
-  nil) ne pose pas de point de route (D14).
+- ~~**T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
+  `/wpp on|off` (7, 11, 13).~~ FAIT le 2026-10-27, en trois commits : les deux formes de nom complet
+  (`Line.WireName`, `Line.ShortName`) ; la logique (`WorldPvPPolice_Alert.lua`, `Call:AddResponder`,
+  `Call:Settle`, `/wpp`), tenue par `tests/test_wpp_alert.lua` ; les fenêtres (`_AlertFrame.lua`,
+  `_CallerFrame.lua`), tenues par `tests/test_wpp_alertframe.lua` (vrais fichiers, cadres factices).
+  Critère 7 tenu en test ; 11 et 13 : au banc. Le piège noté ici (`OMW.caller` en nom COMPLET,
+  « Prénom Nom » sur Forever, « Nom-Royaume » sur Retail) est réglé par `Alert:IsMe`, qui compare des
+  noms complets et apprend le sien au retour de son propre SOS.
 - **T5** — Bot : sa spec, son dépôt.
 - **T6** — Au lancement : mesures M1 à M8 au banc, puis critères 10 à 13.

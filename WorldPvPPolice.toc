@@ -32,3 +32,7 @@ WorldPvPPolice_Death.lua
 WorldPvPPolice_Call.lua
 WorldPvPPolice_Alert.lua
 WorldPvPPolice_Panel.lua
+
+# Fenetres : les alertes recues (pile deplacable) et "Ton appel" chez l'appelant.
+WorldPvPPolice_AlertFrame.lua
+WorldPvPPolice_CallerFrame.lua

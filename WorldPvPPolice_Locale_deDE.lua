@@ -40,5 +40,16 @@ local T = {
     ["Discord : refusé"]              = "Discord: abgelehnt",
     ["Position illisible : appel impossible"] = "Position unlesbar: Ruf unmöglich",
     ["Appel impossible"]              = "Ruf unmöglich",
+    -- Alertes reçues, et « Ton appel »
+    ["%s appelle à l'aide !"]         = "%s ruft um Hilfe!",
+    ["Morts : %d"]                    = "Tode: %d",
+    ["« %s »"]                        = "„%s“",
+    ["En route : %s"]                 = "Unterwegs: %s",
+    ["J'arrive"]                      = "Ich komme",
+    ["En route"]                      = "Unterwegs",
+    ["Ton appel n°%d"]                = "Dein Ruf Nr. %d",
+    ["C'est réglé"]                   = "Erledigt",
+    ["Discord : pas envoyé"]          = "Discord: nicht gesendet",
+    ["Personne en route pour l'instant"] = "Noch niemand unterwegs",
 }
 for k, v in pairs(T) do NS.L[k] = v end
