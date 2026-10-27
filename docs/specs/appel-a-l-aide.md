@@ -71,6 +71,12 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **Le récap arrive après la fenêtre de mort** : il est relu une fois, 1 s plus tard ; un tueur
   devenu « monstre » referme l'encart.
 - **Mode hardcore** (fenêtre `HARDCORE_DEATH`, mort définitive) : pas d'encart.
+- **Une offre de résurrection arrive** (le guildien venu nous aider) : Blizzard empile ses fenêtres
+  l'une sous l'autre, la sienne se placerait sous la fenêtre de mort, donc sous l'encart. L'encart se
+  met toujours sous la DERNIÈRE fenêtre de la pile, et redescend dans le quart de seconde.
+- **Le message d'un vieil appel** : une nouvelle mort hors d'un appel en cours repart d'une case vide.
+  Sinon, des heures plus tard, un clic machinal sur « Libérer l'esprit » renverrait l'ancien message
+  (D3). Pendant un appel en cours, le texte reste (la mise à jour le reprend).
 - **Le nom du tueur est une valeur secrète** : on ne le concatène jamais (erreur Lua) ; l'appel part
   sans tueur.
 - **On est ressuscité sans libérer** (pierre d'âme, prêtre) : la fenêtre de mort se ferme, l'encart
@@ -170,7 +176,9 @@ règle de CLAUDE.md).
 9. [agent] Pas d'écriture dans la fenêtre de mort de Blizzard (seulement accrochée), pas d'appel
    protégé hors geste → agent `api-gotcha-reviewer`.
 10. [human] Mort tuée par un joueur en extérieur : l'encart apparaît sous la fenêtre de mort, avec
-    « Tué par <nom> ». Témoin : une mort par un monstre, sans encart. Observateur : le user, compte A.
+    « Tueur : <nom> (<classe>) ». Témoin : une mort par un monstre, sans encart. Puis B offre une
+    résurrection : la fenêtre de B se voit en entier, bouton Accepter cliquable, l'encart passe
+    dessous. Observateur : le user, compte A.
 11. [human] Clic sur Appeler : sur le compte B, une alerte apparaît avec la zone et les coordonnées ;
     « J'arrive » pose un point de route sur le cadavre de A ; A voit B dans « en route ». Témoin : le
     point de route mène bien à l'endroit où A est mort (A le dit).

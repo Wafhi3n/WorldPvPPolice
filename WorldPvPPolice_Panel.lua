@@ -27,6 +27,20 @@ local function deathDialog()
     return nil
 end
 
+-- Le bas de la pile. Blizzard empile ses fenêtres l'une SOUS l'autre, sans écart
+-- (StaticPopup_SetUpPosition, lu dans la source 70450) : une offre de résurrection d'un guildien venu
+-- nous aider se placerait juste sous la fenêtre de mort, donc sous l'encart, qui cacherait son bouton
+-- Accepter. L'encart va donc sous la DERNIÈRE fenêtre affichée (les fenêtres à place fixe exceptées).
+local function lowestDialog(fallback)
+    local lowest = fallback
+    if _G.StaticPopup_ForEachShownDialog then
+        pcall(_G.StaticPopup_ForEachShownDialog, function(dialog)
+            if dialog:IsShown() and not dialog.hasFixedPosition then lowest = dialog end
+        end)
+    end
+    return lowest
+end
+
 local function text(parent, template, anchor, rel, y)
     local fs = parent:CreateFontString(nil, "ARTWORK", template)
     fs:SetPoint("TOP", rel or parent, anchor, 0, y)
@@ -73,10 +87,22 @@ function Panel:Build()
         since = since + elapsed
         if since < CHECK_EVERY then return end
         since = 0
-        if not deathDialog() then self:Hide() end
+        local death = deathDialog()
+        if not death then
+            self:Hide()
+        elseif lowestDialog(death) ~= Panel.anchor then
+            Panel:Anchor(death)   -- une fenêtre est arrivée sous la pile (une résurrection) : on descend
+        end
     end)
     self.frame = f
     return f
+end
+
+function Panel:Anchor(death)
+    local f = self.frame
+    self.anchor = lowestDialog(death)
+    f:ClearAllPoints()
+    f:SetPoint("TOP", self.anchor, "BOTTOM", 0, -2)
 end
 
 function Panel:Refresh(state)
@@ -93,10 +119,18 @@ end
 
 function Panel:ShowUnder(dialog, state)
     local f = self:Build()
-    f:ClearAllPoints()
-    f:SetPoint("TOP", dialog, "BOTTOM", 0, -2)
+    self:Anchor(dialog)
     self:Refresh(state)
     f:Show()
+end
+
+-- Une nouvelle mort hors d'un appel en cours repart d'une case VIDE : sinon le message d'un vieil
+-- appel repartirait, des heures plus tard, au premier clic sur « Libérer l'esprit » (D3). Pendant un
+-- appel en cours (T3, NS.Call), le texte reste : la mise à jour le reprend.
+function Panel:ClearUnlessActive()
+    if not self.frame then return end
+    if NS.Call and NS.Call.IsActive and NS.Call:IsActive() then return end
+    self.frame.box:SetText("")
 end
 
 function Panel:Hide()
@@ -151,6 +185,7 @@ events:RegisterEvent("PLAYER_UNGHOST")
 events:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_DEAD" then
         NS.Death:Capture()
+        Panel:ClearUnlessActive()
     else
         Panel:Hide()
     end
