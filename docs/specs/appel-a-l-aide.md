@@ -1,7 +1,8 @@
 # Appel à l'aide de guilde à la mort (PvP sauvage)
 
-> État : **brouillon** du 2026-10-27 · Idée et décisions du user (D1 à D9), mise en forme par
-> l'agent ; D10 à D13 **proposées par l'agent**, à confirmer. Rien n'est codé. Rien n'est mesuré en
+> État : **validée** le 2026-10-27 par le user (D1 à D13) · Idée et décisions du user (D1 à D9),
+> mise en forme par l'agent ; D10 à D13 proposées par l'agent, validées par le user le même jour
+> (« je suis d'accord avec tes spec »). Rien n'est codé. Rien n'est mesuré en
 > jeu : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les mesures M1 à M7 se font au
 > banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
@@ -98,14 +99,14 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **D8** (user) — Le bot **supprime la ligne brute** du salon relié une fois sa carte faite.
 - **D9** (user) — Morts répétées : la carte se met à jour au lieu d'en publier une autre (proposition 3
   de l'agent, acceptée).
-- **D10** (agent, à confirmer) — **L'encart n'apparaît que si un joueur nous a tués**, lu dans le récap
+- **D10** (agent, validée par le user le 2026-10-27) — **L'encart n'apparaît que si un joueur nous a tués**, lu dans le récap
   de mort (`C_DeathRecap.GetRecapEvents`, GUID `Player-…` du coup fatal) ; si le récap est illisible,
   l'encart apparaît à chaque mort en extérieur.
-- **D11** (agent, à confirmer) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
+- **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
-- **D12** (agent, à confirmer) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
+- **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
   sont des clics, donc des gestes) : la carte du bot dit qui arrive et quand c'est réglé.
-- **D13** (agent, à confirmer) — Le message d'addon de guilde **part même sans geste** (libération
+- **D13** (agent, validée par le user le 2026-10-27) — Le message d'addon de guilde **part même sans geste** (libération
   automatique) : les guildiens en jeu sont prévenus, Discord non.
 - **Le nom du personnage est toujours dans la ligne Discord.** Sur Discord, une ligne venue du jeu
   s'affiche sous le nom du compte Discord ; avec la case Discord « afficher ce que je joue », sous le
