@@ -345,6 +345,15 @@ la mesure sur Forever.
   le téléphone = `false`, GUID lisible. Pas relevé : le délai. Sur Forever, à mesurer avec la même
   sonde (attendu : « Prénom Nom », la forme des émetteurs mesurée le 2026-09-27 ; le code ne dépend
   pas de la forme, il chuchote au nom que la liste donne).
+- **M11** (D21) — Ce que le jeu laisse faire à un addon pour monter le groupe : `C_PartyInfo.InviteUnit`
+  au nom de la liste de guilde (avec et sans royaume), `C_PartyInfo.ConvertToRaid` (marqué
+  `HasRestrictions` dans la source des deux clients, pas `InviteUnit`), en combat, mort puis fantôme,
+  **sans clic** (depuis un minuteur : décide si un clic peut inviter plusieurs joueurs et passer en raid
+  entre deux), et `C_PartyInfo.CanInvite` quand l'appelant est déjà dans le groupe d'un autre. Témoin :
+  l'invitation et le passage en raid par l'interface de Blizzard. Fiche du banc `mesure--wpp-grouper`
+  (2026-10-28), **PTR de Retail seulement** ; la moitié Forever (noms « Prénom Nom ») attend le 4/11.
+  Pas mesurable à deux comptes : l'invitation d'un 6e joueur dans un groupe plein (la source dit qu'elle
+  demande alors une confirmation).
 
 ## Critères d'acceptation
 
