@@ -316,7 +316,11 @@ la mesure sur Forever.
   suffisent à l'addon de B pour être chargé. Témoin : le même B, connecté avant l'appel, reçoit
   l'alerte par la guilde. *PTR Retail, 2026-10-28 14:09* (`1ed7036`) : B, revenu pendant l'appel,
   reçoit l'alerte, une seule fois ; le chuchoté part donc au bon nom et B reconnaît l'émetteur comme
-  guildien. Pas relevé : la forme exacte du nom de la liste, le délai. Sur Forever : à mesurer.
+  guildien. Sonde du user (même séance) : `GetGuildRosterInfo` rend « Nom-Royaume » même pour un
+  guildien du même royaume (`Palrien-Anasterian false Player-3296-010717F3`, puis le 2e compte), sur
+  le téléphone = `false`, GUID lisible. Pas relevé : le délai. Sur Forever, à mesurer avec la même
+  sonde (attendu : « Prénom Nom », la forme des émetteurs mesurée le 2026-09-27 ; le code ne dépend
+  pas de la forme, il chuchote au nom que la liste donne).
 
 ## Critères d'acceptation
 
