@@ -223,6 +223,9 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   rien). La case suit le message de l'appel sans écraser ce que le joueur écrit ; la case de l'encart
   reprend aussi ce message pendant un appel en cours (avant, une case vidée par un `/reload` effaçait
   le message au premier clic). Le contrat ne change pas : c'est une ligne `SOS` de plus au même numéro.
+  **Une seule case à la fois** (user, 2026-10-28, sur capture d'écran : « c'est voulu les deux
+  fenêtres ? ») : mort, l'encart à l'écran, « Ton appel » cache sa case et son bouton et rétrécit
+  (numéro, morts, Discord, en route, « C'est réglé ») ; l'encart parti, la case revient.
   Pas tranché : une durée de vie plus longue que 15 minutes (question posée au user).
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.

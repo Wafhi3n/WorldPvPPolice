@@ -5,14 +5,15 @@
 -- D16), qui est en route, et le bouton « C'est réglé ». Elle reste après « Libérer l'esprit », quand
 -- l'encart de la mort a disparu : c'est là que l'appelant voit si son appel est parti. Elle se ferme
 -- d'elle-même quand l'appel expire (D11). En tête de la pile de _AlertFrame.lua, déplaçable comme elle.
--- Sa case de message (D18) met l'appel à jour sans mourir : en fantôme, après une déco-reco.
+-- Sa case de message (D18) met l'appel à jour sans mourir : en fantôme, après une déco-reco. Mort,
+-- l'encart a la sienne : une seule case à l'écran, « Ton appel » rétrécit (user, 2026-10-28).
 local _, NS = ...
 local L = NS.L
 
 local CallerFrame = {}
 NS.CallerFrame = CallerFrame
 
-local HEIGHT = 128
+local HEIGHT, COMPACT = 128, 100
 local MAX_MESSAGE_BYTES = 120   -- comme la case de l'encart (_Panel.lua)
 
 local function buildMessageBox(f)
@@ -93,6 +94,27 @@ local function fill(f, a)
     fillBox(f, a)
 end
 
+-- Mort, l'encart (_Panel.lua) est sous la fenêtre de mort avec SA case : la nôtre se cache, et la
+-- fenêtre rétrécit (les alertes, accrochées à son bas, remontent d'elles-mêmes).
+local function encartShown()
+    local P = NS.Panel
+    return (P and P.frame and P.frame:IsShown()) and true or false
+end
+
+local function setCompact(f, compact)
+    if f.compact == compact then return end
+    f.compact = compact
+    f:SetHeight(compact and COMPACT or HEIGHT)
+    if compact then
+        f.box:ClearFocus()
+        f.box:Hide()
+        f.update:Hide()
+    else
+        f.box:Show()
+        f.update:Show()
+    end
+end
+
 -- Montre, met à jour ou cache la fenêtre selon l'appel en cours ; la pile des alertes se replace
 -- quand elle apparaît ou disparaît.
 function CallerFrame:Update()
@@ -101,6 +123,7 @@ function CallerFrame:Update()
     if a then
         local f = self:Build()
         fill(f, a)
+        setCompact(f, encartShown())
         f:Show()
     elseif self.frame then
         self.frame:Hide()

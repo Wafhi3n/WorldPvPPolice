@@ -90,6 +90,11 @@ function Panel:Build()
     f.discord:SetPoint("BOTTOM", 0, 14)
     f.discord:SetWidth(WIDTH - 24)
     f.discord:SetWordWrap(false)   -- le compte rendu tient sur une ligne, sous la case (coupé au pire)
+    -- « Ton appel » cache sa case tant que l'encart est là (une seule case à l'écran) : il suit tout de
+    -- suite, sans attendre son passage d'une seconde.
+    local function followCaller() if NS.CallerFrame then NS.CallerFrame:Update() end end
+    f:SetScript("OnShow", followCaller)
+    f:SetScript("OnHide", followCaller)
     local since = 0
     f:SetScript("OnUpdate", function(self, elapsed)
         since = since + elapsed
