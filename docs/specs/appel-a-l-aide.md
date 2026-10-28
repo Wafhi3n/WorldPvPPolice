@@ -240,6 +240,14 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   de l'interface de Blizzard). Chez le nouveau venu, un `SOS` chuchoté n'est cru que d'un membre de
   sa guilde (`C_GuildInfo.MemberExistsByName`, nom reçu puis sans royaume) ; `OMW` et `END` ne
   passent que par la guilde.
+- **D20** (user, 2026-10-28, sur capture : « deux boutons, un J'arrive et un autre voir localisation,
+  qui ouvre la map et montre là où c'est ») — **« Voir sur la carte » sur chaque alerte** : la carte du
+  monde s'ouvre sur la zone de l'appel (`OpenWorldMap` de Blizzard), sans point de route ni message à
+  la guilde : regarder avant de s'engager. Précisé par l'agent : chaque appel reçu AVEC coordonnées a
+  son repère sur la carte de sa zone (tête de mort, infobulle : qui, morts, tueurs, message), aussi
+  quand le joueur ouvre la carte lui-même ; celui qu'on vient de demander est plus grand ; zone seule =
+  la carte s'ouvre, sans repère ; méthode des repères de LeyLines (vue en jeu sur Forever).
+  « En route » passe sur sa propre ligne de l'alerte, sous le message.
 - **D11** (agent, validée par le user le 2026-10-27 ; **révisée par le user le 2026-10-28** : « un
   appel doit vivre 30 min je pense pour être large au cas où (si pas de relance) », 15 avant) —
   **Un appel dure 30 minutes après sa dernière mise à jour**, puis expire chez tout le monde (chez
@@ -503,6 +511,15 @@ Une tâche = une session, avec son critère.
   à mesurer au banc (rester mort jusqu'au bout). Reste M2 au banc. ⚠️ Cette relecture date d'AVANT
   T4 : les envois de T4 (« J'arrive » et « C'est réglé », `C_Club.SendMessage` et `SendAddonMessage`
   dans nos propres `OnClick`) et les fenêtres de la réception n'ont pas été relus.
+  **2e relecture, 2026-10-28** (même agent, `2be886b..1ed7036` : T4 à D19, Forever ET PTR) : rien de
+  bloquant ; secrets, taint, gestes et lignes de chat propres. Corrigé : le chuchoté de D19 relit la
+  liste juste avant l'envoi (un joueur parti = « Aucun joueur nommé » dans le chat de l'appelant) ;
+  ni relecture de la liste ni chuchoté en instance ou en verrou du chat, « Ton appel » caché en
+  instance (D6) ; un chuchoté refusé est retenté une fois ; liste redemandée après 3 tours si le jeu
+  ne redonne pas son feu vert ; une relecture au plus toutes les 2 s ; la pile par défaut décalée de
+  350 à droite (la fenêtre de mort, TOP -135 en strate DIALOG, la recouvrait) ; « J'arrive » dit au
+  survol qu'il remplace le point de route. Laissés : `MemberExistsByName` avec « Prénom Nom » jamais
+  mesuré sur Forever (M10) ; les données des persos qu'on ne rejoue plus ne sont jamais nettoyées.
 - ~~**T4** — Réception : alerte, J'arrive + point de route, liste « en route », C'est réglé, expiration,
   `/wpp on|off` (7, 11, 13).~~ FAIT le 2026-10-27, en trois commits : les deux formes de nom complet
   (`Line.WireName`, `Line.ShortName`) ; la logique (`WorldPvPPolice_Alert.lua`, `Call:AddResponder`,

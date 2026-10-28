@@ -4,8 +4,10 @@
 --
 -- Une fenêtre par appel, trois au plus, empilées sous la fenêtre « Ton appel » (_CallerFrame.lua)
 -- quand elle est là. Le tout pend à une PILE qu'on déplace en tirant une fenêtre (position gardée
--- pour le compte) : par défaut en haut, au centre, au-dessus des fenêtres de Blizzard comme celle de
--- la mort (TOP -135). Jamais de ligne de chat (skill chat-output). En instance (D6), rien à l'écran.
+-- pour le compte) : par défaut en haut, DÉCALÉE à droite du centre. La fenêtre de mort de Blizzard
+-- (StaticPopup, TOP -135, 320 de large, strate DIALOG au-dessus de la nôtre) cachait sinon « Ton
+-- appel » et les alertes, « J'arrive » compris, quand on est mort (relecture api-gotcha-reviewer du
+-- 2026-10-28). Jamais de ligne de chat (skill chat-output). En instance (D6), rien à l'écran.
 local _, NS = ...
 local L = NS.L
 local Alert = NS.Alert
@@ -14,14 +16,15 @@ local AlertFrame = {}
 NS.AlertFrame = AlertFrame
 
 AlertFrame.WIDTH = 340
-local HEIGHT, GAP = 118, 4
-local DEFAULT_POS = { "TOP", "TOP", 0, -20 }
+local HEIGHT, GAP = 136, 4
+local DEFAULT_POS = { "TOP", "TOP", 350, -20 }   -- 350 = moitié de la fenêtre de mort + moitié de la nôtre + marge
 local TICK = 1   -- s entre deux passages : expiration des alertes, entrée en instance, appel en cours
 
 local function inInstance()
     local ok, inst = pcall(IsInInstance)
     return ok and NS.Line.Readable(inst) and inst == true
 end
+AlertFrame.InInstance = inInstance   -- « Ton appel » se cache aussi en instance (_CallerFrame.lua, D6)
 
 -- ===== La pile, déplaçable =====
 
@@ -88,15 +91,24 @@ local function build()
     f.where = text(f, "GameFontHighlightSmall", f.title, -4)
     f.killers = text(f, "GameFontHighlightSmall", f.where, -2)
     f.msg = text(f, "GameFontHighlightSmall", f.killers, -2)
+    f.enRoute = text(f, "GameFontDisableSmall", f.msg, -2)
     f.go = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.go:SetSize(110, 22)
-    f.go:SetPoint("BOTTOMRIGHT", -18, 16)
+    f.go:SetPoint("BOTTOMRIGHT", -18, 14)
     f.go:SetScript("OnClick", function() Alert:Respond(f.key) end)
-    f.enRoute = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    f.enRoute:SetPoint("LEFT", f, "BOTTOMLEFT", 20, 27)
-    f.enRoute:SetWidth(AlertFrame.WIDTH - 160)
-    f.enRoute:SetJustifyH("LEFT")
-    f.enRoute:SetWordWrap(false)
+    -- « J'arrive » remplace le point de route du joueur et la cible suivie : on le dit au survol.
+    f.go:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Prévient la guilde et pose ton point de route sur lui (il remplace le tien)."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.go:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- « Voir sur la carte » : regarder avant de s'engager, sans rien envoyer (_MapPins.lua).
+    f.map = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.map:SetSize(130, 22)
+    f.map:SetPoint("RIGHT", f.go, "LEFT", -6, 0)
+    f.map:SetText(L["Voir sur la carte"])
+    f.map:SetScript("OnClick", function() NS.MapPins:Show(Alert.list[f.key]) end)
     f.close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     f.close:SetPoint("TOPRIGHT", -6, -6)
     f.close:SetScript("OnClick", function() Alert:Dismiss(f.key) end)
@@ -120,6 +132,7 @@ local function killersText(killers)
     end
     return NS.Death.KillerText({ status = "player", players = players }, L) or ""
 end
+AlertFrame.KillersText = killersText   -- l'infobulle des repères de la carte (_MapPins.lua)
 
 local function fill(f, a)
     f.key = a.key
@@ -155,7 +168,10 @@ function AlertFrame:Layout()
     end
 end
 
-Alert.onChange = function() AlertFrame:Layout() end
+Alert.onChange = function()
+    AlertFrame:Layout()
+    NS.MapPins:Plot()   -- les repères de la carte suivent les appels reçus
+end
 
 -- ===== L'écoute =====
 -- Le préfixe s'inscrit pour RECEVOIR (pas pour envoyer). CHAT_MSG_ADDON : préfixe, texte, canal,
@@ -176,6 +192,7 @@ driver:SetScript("OnEvent", function(_, event, ...)
     elseif event == "GUILD_ROSTER_UPDATE" then
         NS.Roster:OnRoster(...)
     else
+        NS.MapPins:Init()   -- la carte du monde est là : les repères s'y accrochent
         AlertFrame:Layout()
     end
 end)

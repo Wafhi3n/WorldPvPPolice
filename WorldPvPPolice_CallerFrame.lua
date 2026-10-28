@@ -118,7 +118,8 @@ end
 -- Montre, met à jour ou cache la fenêtre selon l'appel en cours ; la pile des alertes se replace
 -- quand elle apparaît ou disparaît.
 function CallerFrame:Update()
-    local a = NS.Call:IsActive() and NS.Call.active
+    -- En instance (un champ de bataille), rien à l'écran (D6) : ni la fenêtre, ni ses envois.
+    local a = NS.Call:IsActive() and not NS.AlertFrame.InInstance() and NS.Call.active
     local was = self:Shown()
     if a then
         local f = self:Build()

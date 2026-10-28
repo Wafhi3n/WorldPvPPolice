@@ -8,14 +8,21 @@
 -- (le temps de son écran de chargement), s'il est toujours là. Rien ne part tant que personne n'appelle,
 -- rien vers ceux qui l'avaient déjà (envoi dirigé, jamais « à tous »).
 -- La première lecture d'un appel sert de base : ceux qui sont là ont eu le message de guilde.
+-- Relecture api-gotcha-reviewer (2026-10-28) : juste avant l'envoi, la liste est RELUE (un chuchoté
+-- vers un joueur parti fait écrire au serveur « Aucun joueur nommé… » dans le chat de l'appelant,
+-- ~110 s plus tard, skill wow-forever-api) ; rien en instance ni en verrou du chat (D6) ; un envoi
+-- refusé est retenté une fois ; une liste que le jeu refuse de redonner est redemandée quand même
+-- après 3 tours ; pas plus d'une relecture toutes les DEBOUNCE secondes (d'autres la demandent aussi).
 local _, NS = ...
 local Line = NS.Line
 
 local Roster = {}
 NS.Roster = Roster
 
-Roster.POLL = 30   -- s entre deux demandes de la liste de guilde, appel en cours seulement
-Roster.LATE = 20   -- s entre « vu en ligne » et l'envoi : son addon doit être chargé pour l'entendre
+Roster.POLL = 30      -- s entre deux demandes de la liste de guilde, appel en cours seulement
+Roster.LATE = 20      -- s entre « vu en ligne » et l'envoi : son addon doit être chargé pour l'entendre
+Roster.RETRY = 10     -- s avant le 2e et dernier essai d'un envoi refusé
+Roster.DEBOUNCE = 2   -- s entre deux relectures de la liste
 
 local function readable(v) return Line.Readable(v) end
 local function isText(v) return readable(v) and type(v) == "string" and v ~= "" end
@@ -36,18 +43,25 @@ Roster.since = nil   -- s depuis la dernière demande ; nil = pas d'appel suivi
 Roster.canRequest = true
 
 function Roster:Reset()
-    self.state, self.since = nil, nil
+    self.state, self.since, self.lastScan = nil, nil, nil
+end
+
+-- En instance (un champ de bataille, D6), en verrou du chat (combat de boss) ou hors guilde : rien.
+local function quiet(p)
+    return call(p.inInstance) == true or call(p.lockdown) == true or call(p.inGuild) == false
 end
 
 -- Une seconde de plus (le passage de _AlertFrame.lua) : sans appel, rien ; sinon une demande de la liste
--- toutes les POLL secondes, la première tout de suite.
+-- toutes les POLL secondes, la première tout de suite ; si le jeu a dit « pas maintenant », on attend
+-- son feu vert, au plus 3 tours.
 function Roster:Tick(elapsed)
     if not NS.Call:IsActive() then
         self:Reset()
         return
     end
     self.since = (self.since or self.POLL) + (elapsed or 0)
-    if self.since < self.POLL or not self.canRequest then return end
+    if self.since < self.POLL or (not self.canRequest and self.since < 3 * self.POLL) then return end
+    if quiet(self.probe) then return end
     self.since = 0
     call(self.probe.request)
 end
@@ -73,6 +87,10 @@ function Roster:OnRoster(canRequest)
         self:Reset()
         return
     end
+    if quiet(self.probe) then return end
+    local t = call(self.probe.now)
+    if t and self.lastScan and t - self.lastScan < self.DEBOUNCE then return end
+    self.lastScan = t
     local now = onlineNow(self.probe)
     if not now then return end
     local n, st = NS.Call.active.n, self.state
@@ -92,15 +110,20 @@ function Roster:OnRoster(canRequest)
     st.online = now
 end
 
--- Envoie mon dernier SOS (celui parti à la guilde) à ce guildien, s'il est toujours en ligne et l'appel
--- toujours en cours. Rend true si le message est parti.
-function Roster:Tell(guid, name)
+-- Envoie mon dernier SOS (celui parti à la guilde) à ce guildien, s'il est en ligne À CET INSTANT (liste
+-- relue : celle de la dernière lecture peut dater de 50 s) et l'appel toujours en cours. Un envoi refusé
+-- (le jeu limite le débit des messages d'addon) est retenté une fois. Rend true si le message est parti.
+function Roster:Tell(guid, name, retried)
     local st = self.state
-    if not (NS.Call:IsActive() and st and st.n == NS.Call.active.n and st.online[guid]) then return false end
+    if not (NS.Call:IsActive() and st and st.n == NS.Call.active.n) or quiet(self.probe) then return false end
+    local now = onlineNow(self.probe)
+    if not (now and now[guid]) then return false end
     local payload = NS.Call.active.guildSig
     if not isText(payload) then return false end
-    local result = call(self.probe.whisper, payload, name)
-    return readable(result) and (result == 0 or result == true)
+    local result = call(self.probe.whisper, payload, now[guid])
+    if readable(result) and (result == 0 or result == true) then return true end
+    if not retried then call(self.probe.after, self.RETRY, function() self:Tell(guid, name, true) end) end
+    return false
 end
 
 -- ===== Sondes du jeu (remplacées par les tests) =====
@@ -108,6 +131,10 @@ end
 Roster.probe = {
     request = function() C_GuildInfo.GuildRoster() end,
     guid    = function() return UnitGUID("player") end,
+    now     = function() return GetTime() end,
+    inGuild = function() return IsInGuild() end,
+    inInstance = function() return (IsInInstance()) end,
+    lockdown = function() return C_ChatInfo.InChatMessagingLockdown() end,
     -- La liste classique (vivante sur Forever, skill wow-forever-api) : nom 1er, en ligne 9e, sur le
     -- téléphone 14e, GUID 17e. Le téléphone ne compte pas : il n'a pas l'addon.
     members = function()
