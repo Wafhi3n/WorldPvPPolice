@@ -20,6 +20,19 @@ sha (`git log --oneline` sur la nouvelle branche donne l'equivalent, le message 
 
 ## Releves
 
+- 2026-10-28 14:56 - jusqu'a a014ac6 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes, build
+  charge par `/reload` (clients lances a 13:57 et 14:09, deploiement de 14:50 : le nouveau fichier
+  `_MapPins.lua` du .toc s'est charge au /reload, vu a l'ecran) - **GO PTR sur D20** - fiche
+  `mesure--wpp-voir-carte`, cinq gestes coches OK par le user de 14:55 a 14:56, plus une capture.
+  Vu OK : l'alerte a « Voir sur la carte » et « J'arrive » (infobulle de « J'arrive ») ; le clic
+  ouvre la carte du monde sur Strangleronce septentrionale avec la tete de mort la ou est le cadavre
+  (capture : au sud-est de Grom'gol, comme la carte Discord), sans rien envoyer ; la carte ouverte a
+  la main la montre aussi, a sa taille au zoom ; « J'arrive » ensuite marche comme avant ; carte
+  ouverte et fermee, combat : aucune erreur, aucune action bloquee (dit par le user).
+  Taint : pas de `taint.log` (niveau 1 = n'ecrit qu'au blocage ; activation non prouvee) : FAIBLE.
+  PAS observe : un appel en zone seule (carte sans repere) ; « Ton appel » cache en instance ; tout
+  sur Forever.
+
 - 2026-10-28 14:12 - jusqu'a 1ed7036 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes (clients
   relances a 13:57 et 14:09, apres le deploiement de 13:50), bot CraftingOrderBot `main@263e680`
   (image de la zone + rattrapage) - **GO PTR sur D19 et sur l'image** - fiche `mesure--wpp-d19-carte`,
