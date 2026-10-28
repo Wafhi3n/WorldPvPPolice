@@ -20,6 +20,28 @@ sha (`git log --oneline` sur la nouvelle branche donne l'equivalent, le message 
 
 ## Releves
 
+- 2026-10-28 12:52 - jusqu'a e6fb0c8 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes
+  (A = Palrien #4, B = #6), `feat/wpp-lignes@e6fb0c8` deploye a 12:48 - **GO PTR sur D18** - fiche
+  `mesure--wpp-ptr-appel`, gestes fantome-msg (12:51) et encart-msg (12:52) coches OK, plus les
+  SavedVariables relues sur le disque.
+  Vu OK : en fantome, la case de « Ton appel » montre le message de l'appel ; un nouveau message
+  et « Mettre a jour » : B le recoit, meme numero ; la ligne Discord revient en jeu avec le nouveau
+  message (A : `discordSig` = `SOS Palrien Strangleronce septentrionale (39.8, 55.5) #SOS7 m50 d1
+  kCamparind cDEATHKNIGHT : ON ME CAMPE ATLANCE SAUVE MOA`). Remort pendant l'appel : une seule
+  case a l'ecran (« Ton appel » retrecie), la case de l'encart montre le message de l'appel, la
+  frappe reste ; B a ensuite l'appel n°7 a 2 morts avec le meme message (pas efface).
+  Avant (build dabe06b, capture du user) : les deux cases a l'ecran en meme temps, d'ou e6fb0c8 ;
+  mise en page lisible, et la fenetre de mort affiche « Liberation dans 6 minutes ».
+  PAS observe : l'etat « Discord : dans N s » puis « pas a jour » (non rapporte) ; la 2e mort
+  n'etait pas encore sur Discord a 12:52 (d1, rythme de 2 minutes ou pas de geste depuis).
+
+- 2026-10-28 12:29 - jusqu'a 27a2cc3 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes,
+  `feat/wpp-appel-persistant@27a2cc3` - **GO PTR sur la liberation automatique** - geste auto coche
+  OK par le user (remarque « fait ») : mort par un joueur, message ecrit, pas de clic, le jeu libere
+  seul au bout du minuteur ; attendu de la fiche : B voit l'alerte, RIEN sur Discord. Rapporte par
+  le user, pas relu sur le disque (SavedVariables reecrites depuis). Tranche la mesure contestee
+  par la revue : la liberation automatique arrive bien.
+
 - 2026-10-28 12:13 - jusqu'a 27a2cc3 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes
   (A = Palrien, compte #4 ; B = compte #6), `feat/wpp-appel-persistant@27a2cc3` deploye a 10:28 -
   **GO PTR, sauf la liberation auto (pas faite)** - fiche `mesure--wpp-ptr-appel`, gestes coches
