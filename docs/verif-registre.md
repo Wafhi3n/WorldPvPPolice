@@ -20,6 +20,18 @@ sha (`git log --oneline` sur la nouvelle branche donne l'equivalent, le message 
 
 ## Releves
 
+- 2026-10-28 14:12 - jusqu'a 1ed7036 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes (clients
+  relances a 13:57 et 14:09, apres le deploiement de 13:50), bot CraftingOrderBot `main@263e680`
+  (image de la zone + rattrapage) - **GO PTR sur D19 et sur l'image** - fiche `mesure--wpp-d19-carte`,
+  six gestes coches OK par le user de 14:09 a 14:11, plus deux captures de la carte Discord.
+  Vu OK : B connecte recoit l'appel par la guilde (temoin) ; B deconnecte puis revenu pendant l'appel
+  le recoit a lui seul, avec le message (connexion : le WHISPER part bien au nom que donne la liste de
+  guilde, et B accepte l'emetteur comme guildien) ; une seule fois (pas-deux-fois) ; la carte Discord
+  montre Strangleronce septentrionale avec le point la ou est le cadavre (image ; « le point est au
+  bon endroit », dit le user) et le garde a la mise a jour (image-maj).
+  PAS releve : la sortie de la sonde `noms` (geste coche sans recopie : la forme du nom de la liste
+  de guilde reste inconnue) ; le delai exact avant l'alerte ; tout sur Forever.
+
 - 2026-10-28 13:35 - jusqu'a c066033 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes, avec le
   bot CraftingOrderBot `main@e726d52` sur Coolify (salon relie #g du Discord de test « Ost Ardent - Le
   foyer », cartes dans #alertes-pvp, role pvp-police) - **GO PTR sur la chaine addon + bot** - fiche

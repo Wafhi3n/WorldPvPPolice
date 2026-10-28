@@ -314,7 +314,9 @@ la mesure sur Forever.
   `GetGuildRosterInfo` (la cible du `WHISPER`) sur chaque client, la livraison d'un message d'addon
   chuchoté à ce nom, la forme de nom qu'accepte `C_GuildInfo.MemberExistsByName`, et si 20 s
   suffisent à l'addon de B pour être chargé. Témoin : le même B, connecté avant l'appel, reçoit
-  l'alerte par la guilde.
+  l'alerte par la guilde. *PTR Retail, 2026-10-28 14:09* (`1ed7036`) : B, revenu pendant l'appel,
+  reçoit l'alerte, une seule fois ; le chuchoté part donc au bon nom et B reconnaît l'émetteur comme
+  guildien. Pas relevé : la forme exacte du nom de la liste, le délai. Sur Forever : à mesurer.
 
 ## Critères d'acceptation
 
