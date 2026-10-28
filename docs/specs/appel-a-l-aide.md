@@ -209,8 +209,9 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   même numéro, mêmes morts, 15 minutes après sa dernière mise à jour comme avant (D11). Un joueur
   campé se déconnecte souvent pour s'en sortir. Précisé par l'agent : gardé par perso (GUID), sur le
   poste seulement (SavedVariables) ; un `/reload` en étant mort, pas libéré, ne compte pas une mort de
-  plus ; une ligne Discord « en cours » ne survit pas (le geste suivant la renvoie). Les alertes REÇUES
-  (fenêtres des autres) ne sont pas gardées : question posée au user.
+  plus ; une ligne Discord « en cours » ne survit pas (le geste suivant la renvoie). **Les alertes
+  REÇUES survivent aussi** (question de l'agent, « oui » du user le même jour) : même règle des 15
+  minutes, une alerte écartée reste écartée, la liste « en route » est gardée.
   Remplace la phrase « Aucun appel n'est sauvegardé : un `/reload` les oublie ».
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
@@ -396,8 +397,10 @@ Depuis D17 (2026-10-28), par personnage (clé = GUID) : `calls` (MON appel en co
 `NS.Call.active` : `n`, `serial`, `deaths`, `snap`, `killers`, `msg`, `sentAt` et `discordAt` en
 secondes réelles `time()`, `guildSig`, `discordSig`, `enRoute` ; repris au retour s'il a moins de 15
 minutes, sans `pending` ; effacé par « C'est réglé » ou l'expiration) et `lastDeath` (`serial`, le
-numéro de ma dernière mort, qui ne repart jamais de 1 ; `dead`, vrai tant qu'elle n'est pas finie).
-Les alertes reçues des autres ne sont pas gardées.
+numéro de ma dernière mort, qui ne repart jamais de 1 ; `dead`, vrai tant qu'elle n'est pas finie)
+et `received` (les alertes reçues des autres, la table même de `NS.Alert.list` : `[émetteur#n] =
+{ key, sender, name, n, map, x, y, zone, deaths, killers, msg, updatedAt (time()), enRoute,
+dismissed, responded }` ; tombent au premier passage après 15 minutes ; `/wpp off` les vide).
 
 ## Renvois
 

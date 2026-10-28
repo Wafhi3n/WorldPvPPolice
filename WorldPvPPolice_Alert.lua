@@ -86,6 +86,48 @@ function Alert:IsOwn(m, payload, sender)
     return false
 end
 
+-- ===== Gardées au /reload (D17) =====
+-- Les alertes reçues survivent à un /reload et à une déco-reco, comme l'appel de l'appelant (choix du
+-- user, 2026-10-28) : Alert.list est la table même de db.received[GUID du perso], ses heures en
+-- secondes réelles (time()). Au retour, celles de plus de EXPIRY tombent au premier Prune.
+
+local function ident(p)
+    local db, key = call(p.db), call(p.guid)
+    if type(db) == "table" and isText(key) then return db, key end
+    return nil
+end
+
+local function isAlert(a)
+    return type(a) == "table" and isText(a.sender) and type(a.n) == "number" and type(a.map) == "number"
+        and type(a.updatedAt) == "number" and type(a.deaths) == "number" and type(a.enRoute) == "table"
+end
+
+-- Reprend les alertes gardées, une fois (dès que la base et le GUID sont là). Une alerte reçue avant
+-- (tout début de session) s'ajoute à celles gardées ; une entrée abîmée est jetée.
+function Alert:Restore()
+    if self.restored then return end
+    local db, key = ident(self.probe)
+    if not db then return end
+    self.restored = true
+    if type(db.received) ~= "table" then db.received = {} end
+    local saved = type(db.received[key]) == "table" and db.received[key] or {}
+    for k, a in pairs(saved) do
+        if not isAlert(a) or a.key ~= k then saved[k] = nil end
+    end
+    for k, a in pairs(self.list) do
+        if not saved[k] then saved[k] = a end
+    end
+    self.list = saved
+    db.received[key] = saved
+end
+
+-- La liste repart à vide (/wpp off) : la base suit.
+local function reset(self)
+    self.list = {}
+    local db, key = ident(self.probe)
+    if db and self.restored and type(db.received) == "table" then db.received[key] = self.list end
+end
+
 -- ===== Réception =====
 
 local function changed(self, what)
@@ -94,6 +136,7 @@ end
 
 -- Les alertes plus vieilles que EXPIRY (depuis leur dernière mise à jour) disparaissent.
 function Alert:Prune()
+    self:Restore()
     local t, gone = now(self.probe), false
     for key, a in pairs(self.list) do
         if t - a.updatedAt >= Alert.EXPIRY then
@@ -181,6 +224,7 @@ end
 
 -- Les alertes à l'écran : non écartées, les plus récentes d'abord, MAX_SHOWN au plus.
 function Alert:Visible()
+    self:Restore()
     local out = {}
     for _, a in pairs(self.list) do
         if not a.dismissed then out[#out + 1] = a end
@@ -200,7 +244,7 @@ end
 
 -- /wpp off : plus rien à l'écran.
 function Alert:Clear()
-    self.list = {}
+    reset(self)
     changed(self, "clear")
 end
 
@@ -239,7 +283,9 @@ local function setWaypoint(map, x, y)
 end
 
 Alert.probe = {
-    now         = function() return GetTime() end,
+    now         = function() return time() end,   -- secondes réelles : les alertes survivent au /reload (D17)
+    guid        = function() return UnitGUID("player") end,
+    db          = function() return NS.db end,
     me          = function() return UnitName("player") end,
     fullName    = function() return GetUnitName("player", true) end,
     unitFull    = function() return UnitFullName("player") end,
