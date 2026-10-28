@@ -1,4 +1,4 @@
-## Interface: 16001
+## Interface: 16001, 120107
 ## Title: World PvP Police Guild
 ## Notes: World PvP Police Guild - /wpp
 ## Author: Wafhien
@@ -6,6 +6,10 @@
 ## SavedVariables: WorldPvPPoliceDB
 
 # Genere par scripts\new_addon.ps1 le 2026-10-27 - client vise : forever.
+# 120107 = PTR de Retail 12.1.7 (Midnight) : l'addon vise l'API Midnight ET Forever tant que Forever
+# n'est pas sorti (dit par le user le 2026-10-27), pour l'eprouver sur le PTR (deploy.ps1 retailptr).
+# Numero repris du .toc de DevMacro, charge sur ce PTR le 2026-10-27. A retirer apres le lancement si
+# le user le dit.
 # Un .lua ajoute ici : sur Forever, /reload suffit (mesure le 2026-09-26) ; sur l'Era il fallait
 # relancer le client. Un addon TOUT NEUF dans le dossier demande toujours de relancer le client.
 
@@ -17,3 +21,20 @@ WorldPvPPolice_Locale_esES.lua
 
 # Socle : table d'addon, SavedVariables, commande /wpp.
 WorldPvPPolice.lua
+
+# Formats lus hors de l'addon : ligne du fil Discord (bot) et message d'addon de guilde.
+WorldPvPPolice_Line.lua
+
+# La mort : fil Discord de la guilde, tueur et cadavre (logique pure + sondes), envoi de l'appel,
+# reception des appels des guildiens, encart sous la fenetre.
+WorldPvPPolice_Discord.lua
+WorldPvPPolice_Death.lua
+WorldPvPPolice_Call.lua
+WorldPvPPolice_Alert.lua
+WorldPvPPolice_Roster.lua
+WorldPvPPolice_MapPins.lua
+WorldPvPPolice_Panel.lua
+
+# Fenetres : les alertes recues (pile deplacable) et "Ton appel" chez l'appelant.
+WorldPvPPolice_AlertFrame.lua
+WorldPvPPolice_CallerFrame.lua
