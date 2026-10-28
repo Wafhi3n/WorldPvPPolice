@@ -246,6 +246,10 @@ la mesure sur Forever.
   À relever aussi (D16) : la ligne revient-elle en `CHAT_MSG_GUILD_DISCORD`, avec notre GUID en 12e
   argument, et en combien de temps (l'addon attend 10 s) ? L'encart doit passer de « envoi en cours »
   à « envoyé ». « Libérer » n'a pas de touche (seul le clic compte) : source lue, rien à mesurer.
+  *PTR Retail, séance du 2026-10-28 (registre)* : la ligne part depuis le bouton « Appeler », depuis
+  Entrée et au clic de « Libérer », mort, et arrive sur Discord. Son retour en
+  `CHAT_MSG_GUILD_DISCORD` est arrivé (`discordSig` posé dans la SavedVariable, il ne l'est qu'au
+  retour). Pas chronométré : le délai du retour.
 - **M3** — Position : `C_Map.GetPlayerMapPosition` mort avant de libérer, et
   `C_DeathInfo.GetCorpseMapPosition` après ; mêmes coordonnées ? *PTR Retail* : mort avant de libérer,
   joueur lisible et cadavre = nil ; après, cadavre lisible et identique (0.482, 0.417 les deux fois).
@@ -255,15 +259,24 @@ la mesure sur Forever.
 - **M6** — Les messages d'addon de guilde passent-ils **entre royaumes** de la même guilde ?
 - **M7** — L'encart sous la fenêtre de mort ne casse ni « Libérer », ni la pierre d'âme, ni le récap
   (aucune erreur d'action interdite, taintLog propre).
+  *PTR Retail, 2026-10-28* : « Libérer » marche avec l'encart (gestes liberer, repetee-2) ; aucun
+  `taint.log` écrit après `/console taintLog 1`, un appel complet et un `/reload`. Le niveau 1
+  n'écrit qu'au blocage, donc aucun blocage, mais rien ne prouve que le journal était allumé :
+  mesure FAIBLE. Pas vus : la pierre d'âme, le bouton « Récap de mort ».
 - **M8** — Un message d'addon `WPPolice` séparé par des **tabulations** arrive-t-il intact en guilde ?
   Aucun précédent chez nous (COC et CraftLink séparent par `|` ou `.`). S'il arrive abîmé, un autre
   séparateur = format v2 ; d'ici là, le contrôle du nombre de champs refuse un message abîmé.
+  *PTR Retail, 2026-10-28* : arrive intact (chez B, l'alerte gardée a tous ses champs : carte,
+  x, y, morts, tueur et classe, message).
 - **M9** — Sur les DEUX clients (Forever et PTR Retail) : sous quel nom exact un message d'addon de
   `GUILD` arrive-t-il (4e argument de `CHAT_MSG_ADDON`) — « Prénom Nom » sur Forever, « Nom-Royaume »
   sur Retail, comme le suppose l'addon ? Mon propre message de guilde me revient-il (mesuré en groupe
   seulement, le 2026-10-05) ? Et donc : un « J'arrive » de B fait-il apparaître B dans « Ton appel » de
   A (`Alert:IsMe`) ? Sans M9, une liste « en route » vide au critère 11 ne dit pas pourquoi.
   Témoin : `/dump GetUnitName("player", true), UnitFullName("player")` sur A, à comparer.
+  *PTR Retail, 2026-10-28* : l'émetteur arrive en « Nom-Royaume » (`Palrien-Anasterian`, lu dans
+  l'alerte gardée de B), et le « J'arrive » de B est apparu dans « Ton appel » de A. Sur Forever :
+  à mesurer.
 
 ## Critères d'acceptation
 
