@@ -248,6 +248,21 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   quand le joueur ouvre la carte lui-même ; celui qu'on vient de demander est plus grand ; zone seule =
   la carte s'ouvre, sans repère ; méthode des repères de LeyLines (vue en jeu sur Forever).
   « En route » passe sur sa propre ligne de l'alerte, sous le message.
+- **D21** (user, 2026-10-28 : « le but c'est que la guilde joue ensemble, donc deux personnes qui font
+  un appel à l'aide doivent être reliées, et sur l'addon il va falloir un bouton pour lancer le
+  groupage / raid ») — **Monter le groupe depuis l'appel.** Le côté Discord est fait par le bot (une
+  carte par zone, sa P10). Côté jeu, **proposition de l'agent, À VALIDER, pas codée** :
+  - dans « Ton appel », un bouton **« Grouper »** : l'appelant invite d'un clic ceux qui sont en route
+    vers lui ET les autres guildiens qui appellent dans la même zone (un appel reçu sur la même carte du
+    jeu, encore en cours) ; il devient chef ; au-delà de 5, le groupe passe en raid avant les
+    invitations suivantes ;
+  - « Ton appel » montre aussi ces appels voisins : « Aussi dans la zone : Bob (appel n°3) » ;
+  - côté répondant, rien de plus que « J'arrive » : c'est l'appelant qui invite (un seul chef) ;
+  - ni groupe ni invitation en instance (D6), ni de joueurs hors de la guilde.
+  - À mesurer avant de coder (M11) : l'invitation par nom complet sur les deux clients (« Prénom Nom »
+    avec une espace sur Forever, « Nom-Royaume » sur Retail), le passage en raid, et l'invitation en
+    combat (`C_PartyInfo.InviteUnit`, `C_PartyInfo.ConvertToRaid` : droits et restrictions à relire dans
+    la source des deux clients).
 - **D11** (agent, validée par le user le 2026-10-27 ; **révisée par le user le 2026-10-28** : « un
   appel doit vivre 30 min je pense pour être large au cas où (si pas de relance) », 15 avant) —
   **Un appel dure 30 minutes après sa dernière mise à jour**, puis expire chez tout le monde (chez
