@@ -265,10 +265,9 @@ la mesure sur Forever.
   Entrée et au clic de « Libérer », mort, et arrive sur Discord. Son retour en
   `CHAT_MSG_GUILD_DISCORD` est arrivé (`discordSig` posé dans la SavedVariable, il ne l'est qu'au
   retour). Pas chronométré : le délai du retour.
-  **À mesurer avec le bot** (jamais fait : sur le PTR, le bot ne lisait pas ce salon) : avec
-  `BOT_SUPPRIMER=oui`, le bot efface la ligne brute environ une seconde après son arrivée. Le retour
-  en jeu arrive-t-il avant l'effacement ? Sinon « Ton appel » dirait « pas de retour » pour une ligne
-  bien partie (et le clic suivant la renverrait : une mise à jour de la même carte, pas une 2e carte).
+  **Avec le bot qui efface la ligne** (`BOT_SUPPRIMER=oui`) : *PTR Retail, 2026-10-28 13:32* (bot
+  `main@e726d52`), « Ton appel » atteint quand même « Discord : envoyé » : le retour en jeu arrive
+  avant l'effacement. À revoir sur Forever.
 - **M3** — Position : `C_Map.GetPlayerMapPosition` mort avant de libérer, et
   `C_DeathInfo.GetCorpseMapPosition` après ; mêmes coordonnées ? *PTR Retail* : mort avant de libérer,
   joueur lisible et cadavre = nil ; après, cadavre lisible et identique (0.482, 0.417 les deux fois).

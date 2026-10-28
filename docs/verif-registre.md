@@ -20,6 +20,22 @@ sha (`git log --oneline` sur la nouvelle branche donne l'equivalent, le message 
 
 ## Releves
 
+- 2026-10-28 13:35 - jusqu'a c066033 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes, avec le
+  bot CraftingOrderBot `main@e726d52` sur Coolify (salon relie #g du Discord de test « Ost Ardent - Le
+  foyer », cartes dans #alertes-pvp, role pvp-police) - **GO PTR sur la chaine addon + bot** - fiche
+  `mesure--wpp-bot-ptr`, gestes coches par le user de 13:29 a 13:34, plus une capture de la carte.
+  Vu OK : « SOS test discussion » tape en jeu reste dans #g, sans carte ; un appel (mort par
+  Camparind, « test bot », Liberer) donne une carte « Palrien appelle a l'aide ! », zone et
+  coordonnees (39.7, 55.4), Morts 1, « Camparind (Chevalier de la mort) », pied « #SOS8 · Palrien »,
+  et la ligne brute quitte #g ; la mention @pvp-police notifie ; « Ton appel » atteint
+  « Discord : envoye » MEME avec l'effacement de la ligne par le bot (M2 : le retour arrive avant) ;
+  « J'arrive » de B, un nouveau message et « C'est regle » mettent a jour la MEME carte.
+  Vu en passant : l'horloge du serveur Coolify retarde de 114 s (lue a 13:36, PC a 3 s de
+  l'heure de reference) : la carte dit 13:28 pour une ligne de 13:30.
+  Remarque du user (au geste jarrive) : un guildien qui se connecte pendant un appel ne recoit pas
+  l'alerte (attendu : le message de guilde ne touche que les presents ; a decider).
+  PAS observe : la carte qui passe au gris apres 30 minutes (geste gris pas fait) ; tout sur Forever.
+
 - 2026-10-28 12:52 - jusqu'a e6fb0c8 - **PTR Retail 12.1.7.70493, PAS Forever**, deux comptes
   (A = Palrien #4, B = #6), `feat/wpp-lignes@e6fb0c8` deploye a 12:48 - **GO PTR sur D18** - fiche
   `mesure--wpp-ptr-appel`, gestes fantome-msg (12:51) et encart-msg (12:52) coches OK, plus les
