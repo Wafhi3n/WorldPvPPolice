@@ -15,7 +15,7 @@ local Line = NS.Line
 local Alert = {}
 NS.Alert = Alert
 
-Alert.EXPIRY = 15 * 60   -- s après la dernière mise à jour reçue (D11, comme l'appelant)
+Alert.EXPIRY = 30 * 60   -- s après la dernière mise à jour reçue (D11, comme l'appelant)
 Alert.MAX_SHOWN = 3      -- alertes à l'écran au plus (spec, « Deux appels en même temps »)
 
 Alert.list = {}          -- [émetteur .. "#" .. n] = alerte

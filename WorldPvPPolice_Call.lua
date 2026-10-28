@@ -23,7 +23,7 @@ local Line = NS.Line
 local Call = {}
 NS.Call = Call
 
-Call.EXPIRY = 15 * 60       -- s après la dernière mise à jour partie (D11)
+Call.EXPIRY = 30 * 60       -- s après la dernière mise à jour partie (D11, 30 min depuis le 2026-10-28)
 Call.DISCORD_EVERY = 120    -- s entre deux lignes Discord d'un même appel (morts répétées, critère 4)
 Call.ECHO_WAIT = 10         -- s laissées à la ligne Discord pour revenir en jeu (délai jamais mesuré)
 
@@ -124,7 +124,7 @@ end
 
 -- Le prochain numéro d'appel de CE perso (clé = son GUID), et de quoi le consommer une fois l'appel
 -- parti. Il vit dans les SavedVariables du poste : un autre poste repart de 1 (le bot ne reconnaît un
--- numéro que dans la fenêtre de 15 minutes).
+-- numéro que dans la fenêtre de 30 minutes).
 local function nextNumber(p)
     local db, key = call(p.db), text((call(p.guid)))
     if type(db) ~= "table" or not key then return nil end
@@ -304,7 +304,7 @@ function Call:Send(msg, origin, state, serial)
     end
     local report, sent = self:Deliver(a, origin ~= "auto")
     if report.err then return report end
-    -- L'appel dure 15 minutes après la dernière mise à jour PARTIE (D11) : un double clic qui n'envoie
+    -- L'appel dure 30 minutes après la dernière mise à jour PARTIE (D11) : un double clic qui n'envoie
     -- rien ne le prolonge pas. Un appel dont rien n'est parti n'est pas ouvert, et garde son numéro.
     -- Une ligne Discord en cours compte : sans appel ouvert, son retour n'aurait rien à confirmer.
     if opening and not sent then return report end

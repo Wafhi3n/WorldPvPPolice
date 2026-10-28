@@ -206,7 +206,7 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   erreur, l'encart aurait dit « envoyé » et le délai de 2 minutes aurait empêché de réessayer.
 - **D17** (user, 2026-10-28, « après le reload il faudrait pas que les compteurs soient reset au cas
   d'une déco-reco », après la séance PTR) — **Un appel survit à un `/reload` et à une déco-reco** :
-  même numéro, mêmes morts, 15 minutes après sa dernière mise à jour comme avant (D11). Un joueur
+  même numéro, mêmes morts, la durée de vie de D11 comptée depuis sa dernière mise à jour. Un joueur
   campé se déconnecte souvent pour s'en sortir. Précisé par l'agent : gardé par perso (GUID), sur le
   poste seulement (SavedVariables) ; un `/reload` en étant mort, pas libéré, ne compte pas une mort de
   plus ; une ligne Discord « en cours » ne survit pas (le geste suivant la renvoie). **Les alertes
@@ -219,16 +219,17 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   déco-reco. Précisé par l'agent : un clic est un geste, le message part à la guilde et sur Discord
   avec le même numéro ; morts, position et tueurs ne bougent pas ; Discord garde son rythme (une ligne
   par 2 minutes, la fenêtre dit « dans N s », puis « pas à jour » jusqu'au geste suivant) ; chaque
-  mise à jour PARTIE relance les 15 minutes (D11 inchangée : le même message deux fois ne prolonge
+  mise à jour PARTIE relance la durée de vie de D11 (le même message deux fois ne prolonge
   rien). La case suit le message de l'appel sans écraser ce que le joueur écrit ; la case de l'encart
   reprend aussi ce message pendant un appel en cours (avant, une case vidée par un `/reload` effaçait
   le message au premier clic). Le contrat ne change pas : c'est une ligne `SOS` de plus au même numéro.
   **Une seule case à la fois** (user, 2026-10-28, sur capture d'écran : « c'est voulu les deux
   fenêtres ? ») : mort, l'encart à l'écran, « Ton appel » cache sa case et son bouton et rétrécit
   (numéro, morts, Discord, en route, « C'est réglé ») ; l'encart parti, la case revient.
-  Pas tranché : une durée de vie plus longue que 15 minutes (question posée au user).
-- **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
-  expire chez tout le monde.
+- **D11** (agent, validée par le user le 2026-10-27 ; **révisée par le user le 2026-10-28** : « un
+  appel doit vivre 30 min je pense pour être large au cas où (si pas de relance) », 15 avant) —
+  **Un appel dure 30 minutes après sa dernière mise à jour**, puis expire chez tout le monde (chez
+  l'appelant, chez ceux qui reçoivent l'alerte, et la carte du bot).
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
   sont des clics, donc des gestes) : la carte du bot dit qui arrive et quand c'est réglé.
 - **D13** (agent, validée par le user le 2026-10-27) — Le message d'addon de guilde **part même sans geste** (libération
@@ -330,7 +331,7 @@ règle de CLAUDE.md).
     carte montre la liste des tueurs de la ligne (D15) ; un appel en zone seule (D14), s'il se
     produit, montre la zone sans coordonnées.
 13. [human] « C'est réglé » : l'alerte disparaît chez B, la carte passe à « réglé ». Sans clic, au
-    bout de 15 minutes, l'alerte disparaît chez B.
+    bout de 30 minutes, l'alerte disparaît chez B.
 14. [test + human] D18 : en fantôme, un nouveau message tapé dans « Ton appel » et « Mettre à jour » :
     chez B, l'alerte montre le nouveau message, même numéro, mêmes morts ; sur Discord, une ligne
     `SOS` au même numéro (tout de suite, ou après « dans N s » et un nouveau clic). Témoin : l'alerte
@@ -379,7 +380,7 @@ END <Perso> #SOS<n>
 - `<uiMapID>` : carte de zone (`C_Map.GetBestMapForUnit("player")` à la mort).
 - `<morts>` : morts depuis l'ouverture de l'appel (1 à la première ligne).
 - `<C1>…` : jeton de classe anglais (`ROGUE`, `MAGE`…), ou `-`.
-- Une ligne `SOS` avec un `#SOS<n>` déjà vu **depuis moins de 15 minutes** (D11) = mise à jour de cet
+- Une ligne `SOS` avec un `#SOS<n>` déjà vu **depuis moins de 30 minutes** (D11) = mise à jour de cet
   appel (morts, message). Au-delà, c'est un nouvel appel : le numéro vit dans les SavedVariables du
   poste, et un autre poste (ou une base effacée) repart de 1.
 
@@ -431,7 +432,7 @@ minutes, sans `pending` ; effacé par « C'est réglé » ou l'expiration) et `l
 numéro de ma dernière mort, qui ne repart jamais de 1 ; `dead`, vrai tant qu'elle n'est pas finie)
 et `received` (les alertes reçues des autres, la table même de `NS.Alert.list` : `[émetteur#n] =
 { key, sender, name, n, map, x, y, zone, deaths, killers, msg, updatedAt (time()), enRoute,
-dismissed, responded }` ; tombent au premier passage après 15 minutes ; `/wpp off` les vide).
+dismissed, responded }` ; tombent au premier passage après 30 minutes ; `/wpp off` les vide).
 
 ## Renvois
 
