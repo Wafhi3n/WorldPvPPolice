@@ -113,9 +113,11 @@ function CallerFrame:Shown()
 end
 
 -- « Mettre à jour » ou Entrée (un geste) : le message de la case part avec l'appel (NS.Call:UpdateMessage).
+-- Mort, l'encart est là aussi : sa case suit, sinon « Libérer » renverrait l'ancien message.
 function CallerFrame:Send()
     if not self.frame then return end
     NS.Call:UpdateMessage(self.frame.box:GetText() or "")
+    if NS.Panel and NS.Panel.frame and NS.Panel.frame:IsShown() then NS.Panel:SyncBox(true) end
     self:Update()
 end
 

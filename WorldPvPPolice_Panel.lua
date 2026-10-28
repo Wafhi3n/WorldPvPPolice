@@ -145,11 +145,21 @@ function Panel.ReportText(r)
     return string.format(L["Appel n°%d"], r.n) .. " · " .. guild .. " · " .. discordText(r)
 end
 
+-- Pendant un appel en cours, la case reprend SON message (envoyé d'ici, de « Ton appel », ou gardé
+-- avant un /reload) : une case vide l'effacerait au clic, et « Libérer » n'enverrait rien (D3). Une
+-- fois par mort, et jamais sous les doigts du joueur : la fenêtre de mort se réaffiche pendant la même
+-- mort (sort de rez changé), ce qu'il tapait reste.
+function Panel:SyncBox(always)
+    local f = self.frame
+    if not (f and NS.Call:IsActive()) or f.box:HasFocus() then return end
+    if not always and self.syncedFor == self.offered then return end
+    f.box:SetText(NS.Call.active.msg or "")
+    self.syncedFor = self.offered
+end
+
 function Panel:ShowUnder(dialog, state)
     local f = self:Build()
-    -- Pendant un appel en cours, la case reprend SON message (envoyé d'ici, de « Ton appel », ou gardé
-    -- avant un /reload) : une case vide l'effacerait au clic, et « Libérer » n'enverrait rien (D3).
-    if NS.Call:IsActive() then f.box:SetText(NS.Call.active.msg or "") end
+    self:SyncBox()
     self:Anchor(dialog)
     self:Refresh(state)
     f:Show()
