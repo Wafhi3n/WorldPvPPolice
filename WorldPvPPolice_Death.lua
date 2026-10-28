@@ -193,20 +193,74 @@ Death.probe = {
     inInstance = function() return (IsInInstance()) end,
     inGuild    = function() return IsInGuild() end,
     now        = function() return GetTime() end,
+    isDead     = function() return UnitIsDead("player") end,
+    guid       = function() return UnitGUID("player") end,
+    db         = function() return NS.db end,
 }
+
+-- D17 (user, 2026-10-28) : un appel survit à un /reload et à une déco-reco. Le numéro de mort et l'état
+-- « mort » sont donc gardés par perso (db.lastDeath[GUID] = { serial, dead }) : les morts d'un appel
+-- gardé sont rangées par ce numéro, qui ne doit jamais repartir de 1. Sans GUID ni base (tests, tout
+-- début de session), rien n'est gardé et tout marche comme avant.
+local function ident(self)
+    local p = self.probe
+    local db, key = call(p.db), call(p.guid)
+    if type(db) == "table" and readable(key) and type(key) == "string" and key ~= "" then return db, key end
+    return nil
+end
+
+local function slot(self, create)
+    local db, key = ident(self)
+    if not db then return nil end
+    if type(db.lastDeath) ~= "table" then
+        if not create then return nil end
+        db.lastDeath = {}
+    end
+    local s = db.lastDeath[key]
+    if type(s) ~= "table" then
+        if not create then return nil end
+        s = {}
+        db.lastDeath[key] = s
+    end
+    return s
+end
+
+-- Reprend le numéro gardé, une fois (dès que la base et le GUID sont là). Encore mort (pas libéré)
+-- au retour : c'est LA MÊME mort, la fenêtre qui rouvre ne compte pas une mort de plus. Fantôme ou
+-- vivant : la mort gardée est finie.
+function Death:Restore()
+    if self.restored or not ident(self) then return end
+    self.restored = true
+    local s = slot(self, false)
+    if not s then return end
+    if type(s.serial) == "number" and s.serial > (self.serial or 0) then self.serial = s.serial end
+    local still = call(self.probe.isDead)
+    if s.dead and readable(still) and still == true then self.dead = true else s.dead = nil end
+end
+
+local function save(self)
+    local s = slot(self, true)
+    if s then s.serial, s.dead = self.serial, self.dead end
+end
 
 -- Une mort dure du passage à « mort » jusqu'à PLAYER_ALIVE ou PLAYER_UNGHOST. Rend (numéro, nouvelle ?).
 -- Appelée à PLAYER_DEAD ET à l'ouverture de la fenêtre de mort, dans un ordre qui n'est pas sûr
 -- (Blizzard ouvre la fenêtre sur son propre PLAYER_DEAD) : la première compte. Après un /reload en
--- étant mort, la fenêtre rouvre : nouvelle mort pour nous (un appel ne survit pas au /reload).
+-- étant mort, la fenêtre rouvre : c'est la même mort (Restore).
 function Death:Mark()
+    self:Restore()
     if self.dead then return self.serial, false end
     self.dead = true
     self.serial = (self.serial or 0) + 1
+    save(self)
     return self.serial, true
 end
 
-function Death:Revive() self.dead = nil end
+function Death:Revive()
+    self:Restore()
+    self.dead = nil
+    save(self)
+end
 
 -- Lit tout ce qu'on sait de la mort en cours et le garde dans Death.last.
 function Death:Capture()

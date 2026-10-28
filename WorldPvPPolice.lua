@@ -85,5 +85,7 @@ f:SetScript("OnEvent", function(_, event, arg1)
             NS.db.seenVersion = NS.VERSION
             NS:Printf(L["version %s. Tape /%s pour l'aide."], NS.VERSION, "wpp")
         end
+        -- Un appel gardé d'avant le /reload ou la déco (D17) : « Ton appel » réapparaît.
+        if NS.Call then NS.Call:Changed() end
     end
 end)

@@ -55,26 +55,71 @@ local function now(p) return call(p.now) or 0 end
 -- ===== L'appel en cours =====
 -- Call.active = { n, serial (la mort qui l'a ouvert), deaths = { [mort] = true }, snap, killers =
 -- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, discordAt, discordSig, pending, enRoute =
--- { { sender, name }, … } }. Jamais sauvegardé (spec, « Données sauvegardées ») : un /reload l'oublie.
+-- { { sender, name }, … } }.
+-- D17 (user, 2026-10-28) : il survit à un /reload et à une déco-reco. C'est la MÊME table que
+-- db.calls[GUID du perso] : tout changement est gardé, un reroll n'en hérite pas. Les heures sont donc
+-- en secondes réelles (time(), probe.now), pas en GetTime(). Au retour, on le reprend s'il a moins de
+-- EXPIRY ; sa ligne Discord « en cours » est oubliée (son attente du retour est morte avec le
+-- /reload : le geste suivant la renverra).
+
+local function ident(p)
+    local db, key = call(p.db), text((call(p.guid)))
+    if type(db) == "table" and key then return db, key end
+    return nil
+end
+
+local function keep(self, a)
+    local db, key = ident(self.probe)
+    if not db then return end
+    if type(db.calls) ~= "table" then db.calls = {} end
+    db.calls[key] = a
+end
+
+local function isCall(a)
+    return type(a) == "table" and type(a.n) == "number" and type(a.sentAt) == "number"
+        and type(a.deaths) == "table" and type(a.snap) == "table" and type(a.snap.map) == "number"
+end
+
+-- Reprend l'appel gardé, une fois (dès que la base et le GUID sont là).
+function Call:Restore()
+    if self.restored then return end
+    local db, key = ident(self.probe)
+    if not db then return end
+    self.restored = true
+    local a = type(db.calls) == "table" and db.calls[key]
+    if not a then return end
+    if isCall(a) and now(self.probe) - a.sentAt < Call.EXPIRY then
+        a.pending = nil
+        self.active = a
+    else
+        db.calls[key] = nil
+    end
+end
 
 function Call:IsActive()
+    self:Restore()
     local a = self.active
     if not a then return false end
     if now(self.probe) - a.sentAt < Call.EXPIRY then return true end
     self.active = nil
+    keep(self, nil)
     return false
 end
 
--- Une mort par un joueur (l'encart s'est ouvert) pendant un appel en cours : le compteur monte (D9).
--- Rien ne part ici : la mise à jour part avec le geste suivant.
+-- Une mort par un joueur (l'encart s'est ouvert) pendant un appel en cours : le compteur monte (D9) et
+-- « Ton appel » le montre tout de suite. Rien ne part ici : la mise à jour part avec le geste suivant.
 function Call:NoteDeath(serial)
-    if serial and self:IsActive() then self.active.deaths[serial] = true end
+    if not (serial and self:IsActive()) or self.active.deaths[serial] then return end
+    self.active.deaths[serial] = true
+    self:Changed()
 end
 
 -- Le récap relu après coup dit « monstre » : cette mort ne compte plus, sauf celle qui a ouvert l'appel.
 function Call:ForgetDeath(serial)
     local a = self.active
-    if a and serial and serial ~= a.serial then a.deaths[serial] = nil end
+    if not (a and serial and serial ~= a.serial and a.deaths[serial]) then return end
+    a.deaths[serial] = nil
+    self:Changed()
 end
 
 -- Le prochain numéro d'appel de CE perso (clé = son GUID), et de quoi le consommer une fois l'appel
@@ -248,6 +293,7 @@ function Call:Send(msg, origin, state, serial)
     if opening then
         consume()
         self.active = a
+        keep(self, a)
     end
     if sent then a.sentAt = now(p) end
     self:Changed()
@@ -274,6 +320,7 @@ function Call:Settle()
     if not self:IsActive() then return nil end
     local a, p = self.active, self.probe
     self.active = nil
+    keep(self, nil)
     local report = { guild = "failed", discord = "none" }
     local payload = Line.EncodeEND(a.n)
     local result = payload and call(p.sendGuild, payload)
@@ -288,7 +335,7 @@ end
 -- ===== Sondes du jeu (remplacées par les tests) =====
 
 Call.probe = {
-    now         = function() return GetTime() end,
+    now         = function() return time() end,   -- secondes réelles : l'appel survit au /reload (D17)
     me          = function() return UnitName("player") end,
     guid        = function() return UnitGUID("player") end,
     db          = function() return NS.db end,

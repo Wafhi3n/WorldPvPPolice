@@ -204,6 +204,14 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   (blancs regroupés), GUID de l'auteur = le nôtre quand il est lisible. Attente : 10 s (délai du
   retour jamais mesuré, M2). Raison : un `C_Club.SendMessage` bloqué faute de geste ne lève aucune
   erreur, l'encart aurait dit « envoyé » et le délai de 2 minutes aurait empêché de réessayer.
+- **D17** (user, 2026-10-28, « après le reload il faudrait pas que les compteurs soient reset au cas
+  d'une déco-reco », après la séance PTR) — **Un appel survit à un `/reload` et à une déco-reco** :
+  même numéro, mêmes morts, 15 minutes après sa dernière mise à jour comme avant (D11). Un joueur
+  campé se déconnecte souvent pour s'en sortir. Précisé par l'agent : gardé par perso (GUID), sur le
+  poste seulement (SavedVariables) ; un `/reload` en étant mort, pas libéré, ne compte pas une mort de
+  plus ; une ligne Discord « en cours » ne survit pas (le geste suivant la renvoie). Les alertes REÇUES
+  (fenêtres des autres) ne sont pas gardées : question posée au user.
+  Remplace la phrase « Aucun appel n'est sauvegardé : un `/reload` les oublie ».
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
@@ -384,7 +392,12 @@ une ligne. Nom du fil : mots séparés d'une espace, ni blanc au bord, ni tabula
 `WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage : clé = GUID du perso,
 consommé seulement quand un appel part), `alerts` (on/off, compte ; `/wpp on|off`), `pile` (position
 de la pile des fenêtres, compte : `{ point, point relatif, x, y }`, absente = position par défaut).
-Aucun appel n'est sauvegardé : un `/reload` les oublie (ils expirent en 15 minutes de toute façon).
+Depuis D17 (2026-10-28), par personnage (clé = GUID) : `calls` (MON appel en cours, la table même de
+`NS.Call.active` : `n`, `serial`, `deaths`, `snap`, `killers`, `msg`, `sentAt` et `discordAt` en
+secondes réelles `time()`, `guildSig`, `discordSig`, `enRoute` ; repris au retour s'il a moins de 15
+minutes, sans `pending` ; effacé par « C'est réglé » ou l'expiration) et `lastDeath` (`serial`, le
+numéro de ma dernière mort, qui ne repart jamais de 1 ; `dead`, vrai tant qu'elle n'est pas finie).
+Les alertes reçues des autres ne sont pas gardées.
 
 ## Renvois
 
