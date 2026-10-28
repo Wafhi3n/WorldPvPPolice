@@ -226,6 +226,20 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   **Une seule case à la fois** (user, 2026-10-28, sur capture d'écran : « c'est voulu les deux
   fenêtres ? ») : mort, l'encart à l'écran, « Ton appel » cache sa case et son bouton et rétrécit
   (numéro, morts, Discord, en route, « C'est réglé ») ; l'encart parti, la case revient.
+- **D19** (user, 2026-10-28, au banc PTR : « quand quelqu'un se co entre temps la demande d'aide
+  n'arrive pas » ; option 1 choisie : « oui fait la 1 ») — **Un guildien qui se connecte pendant un
+  appel le reçoit, à lui seul.** Tant que MON appel est en cours, l'addon relit la liste de guilde
+  (`C_GuildInfo.GuildRoster`, une demande toutes les 30 s, réponse `GUILD_ROSTER_UPDATE`) ; qui n'y
+  était pas en ligne à la lecture d'avant reçoit mon dernier `SOS` en message d'addon `WHISPER`, 20 s
+  plus tard (son écran de chargement), s'il est toujours en ligne. La première lecture d'un appel sert
+  de base (ceux qui sont là ont eu le message de guilde) ; une déconnexion puis un retour le
+  re-prévient ; jamais moi ; rien sans appel en cours. Écarté par le user : demander à toute la
+  guilde à chaque connexion (option 2), renvoyer à toute la guilde toutes les 5 minutes (option 3).
+  Précisé par l'agent : la liste classique (`GetGuildRosterInfo` : en ligne, pas sur le téléphone),
+  pas les événements de présence des communautés (un seul abonnement possible, qui retirerait celui
+  de l'interface de Blizzard). Chez le nouveau venu, un `SOS` chuchoté n'est cru que d'un membre de
+  sa guilde (`C_GuildInfo.MemberExistsByName`, nom reçu puis sans royaume) ; `OMW` et `END` ne
+  passent que par la guilde.
 - **D11** (agent, validée par le user le 2026-10-27 ; **révisée par le user le 2026-10-28** : « un
   appel doit vivre 30 min je pense pour être large au cas où (si pas de relance) », 15 avant) —
   **Un appel dure 30 minutes après sa dernière mise à jour**, puis expire chez tout le monde (chez
@@ -295,6 +309,12 @@ la mesure sur Forever.
   *PTR Retail, 2026-10-28* : l'émetteur arrive en « Nom-Royaume » (`Palrien-Anasterian`, lu dans
   l'alerte gardée de B), et le « J'arrive » de B est apparu dans « Ton appel » de A. Sur Forever :
   à mesurer.
+- **M10** (D19) — Pendant un appel de A, B se déconnecte puis revient : reçoit-il l'alerte une
+  vingtaine de secondes après son arrivée ? Ce qui le décide, jamais mesuré : le nom que rend
+  `GetGuildRosterInfo` (la cible du `WHISPER`) sur chaque client, la livraison d'un message d'addon
+  chuchoté à ce nom, la forme de nom qu'accepte `C_GuildInfo.MemberExistsByName`, et si 20 s
+  suffisent à l'addon de B pour être chargé. Témoin : le même B, connecté avant l'appel, reçoit
+  l'alerte par la guilde.
 
 ## Critères d'acceptation
 
@@ -406,7 +426,9 @@ Le lecteur de commandes du bot (`WTB […] … #CO<n>`) ne lit aucune de ces lig
 ### Message d'addon de guilde (lu par les autres copies de l'addon)
 
 Préfixe `WPPolice`, canal `GUILD`. Premier champ = **version du format** (1) ; un lecteur ignore une
-version qu'il ne connaît pas. Champs séparés par une tabulation, texte libre privé de tabulations et
+version qu'il ne connaît pas. Depuis D19 (2026-10-28), le même `SOS` peut aussi arriver en `WHISPER`
+(un appelant à un guildien qui vient de se connecter) : un lecteur ne le croit que d'un membre de sa
+guilde, et n'accepte ni `OMW` ni `END` chuchotés. Champs séparés par une tabulation, texte libre privé de tabulations et
 de `|`, 255 octets au plus.
 
 - `1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>` — appel ou mise à jour

@@ -195,15 +195,25 @@ function Alert:OnOMW(m, sender)
     return nil
 end
 
--- Un message d'addon de guilde (CHAT_MSG_ADDON : préfixe, texte, canal, émetteur). Rend ce qui a
+-- Un SOS chuchoté (D19) n'est cru que d'un membre de MA guilde : n'importe qui peut chuchoter. Le nom
+-- tel que reçu, puis sans royaume (Retail, même royaume) : la forme qu'attend le jeu n'est pas mesurée.
+function Alert:FromGuild(sender)
+    if is(call(self.probe.isGuildMember, sender), true) then return true end
+    local short = sender:match("^([^%-]+)%-")
+    return short ~= nil and is(call(self.probe.isGuildMember, short), true)
+end
+
+-- Un message d'addon (CHAT_MSG_ADDON : préfixe, texte, canal, émetteur) : de GUILDE, ou un SOS chuchoté
+-- par un guildien qui appelait déjà quand je me suis connecté (D19, _Roster.lua). Rend ce qui a
 -- changé ("new", "update", "enroute", "responder", "end", "self") ou nil. Jamais de ligne de chat.
 function Alert:OnMessage(prefix, payload, channel, sender)
-    if not (isText(prefix) and prefix == Line.PREFIX and isText(channel) and channel == "GUILD") then
+    if not (isText(prefix) and prefix == Line.PREFIX and (is(channel, "GUILD") or is(channel, "WHISPER"))) then
         return nil
     end
     if not (isText(payload) and isText(sender)) then return nil end
     local m = Line.Decode(payload)
     if not m then return nil end
+    if channel == "WHISPER" and not (m.kind == "SOS" and self:FromGuild(sender)) then return nil end
     if self:IsOwn(m, payload, sender) then return "self" end
     self:Prune()
     local what
@@ -292,6 +302,7 @@ Alert.probe = {
     realm       = function() return GetNormalizedRealmName() end,
     inInstance  = function() return (IsInInstance()) end,
     alertsOn    = function() return not (NS.db and NS.db.alerts == false) end,
+    isGuildMember = function(name) return C_GuildInfo.MemberExistsByName(name) end,
     mapName     = function(map) local info = C_Map.GetMapInfo(map); return info and info.name end,
     stream      = function() return NS.Discord.Stream() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,

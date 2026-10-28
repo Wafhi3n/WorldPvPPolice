@@ -159,7 +159,8 @@ Alert.onChange = function() AlertFrame:Layout() end
 
 -- ===== L'écoute =====
 -- Le préfixe s'inscrit pour RECEVOIR (pas pour envoyer). CHAT_MSG_ADDON : préfixe, texte, canal,
--- émetteur. Un passage par seconde : alertes expirées, entrée ou sortie d'instance, appel en cours.
+-- émetteur. GUILD_ROSTER_UPDATE : la liste de guilde, relue pendant MON appel (D19, _Roster.lua). Un
+-- passage par seconde : alertes expirées, entrée ou sortie d'instance, appel en cours, liste de guilde.
 
 if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
     pcall(C_ChatInfo.RegisterAddonMessagePrefix, NS.Line.PREFIX)
@@ -168,9 +169,12 @@ end
 local driver = CreateFrame("Frame")
 driver:RegisterEvent("CHAT_MSG_ADDON")
 driver:RegisterEvent("PLAYER_ENTERING_WORLD")
+driver:RegisterEvent("GUILD_ROSTER_UPDATE")
 driver:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         Alert:OnMessage(...)
+    elseif event == "GUILD_ROSTER_UPDATE" then
+        NS.Roster:OnRoster(...)
     else
         AlertFrame:Layout()
     end
@@ -181,6 +185,7 @@ driver:SetScript("OnUpdate", function(_, elapsed)
     if since < TICK then return end
     since = 0
     Alert:Prune()
+    NS.Roster:Tick(TICK)
     if NS.CallerFrame then NS.CallerFrame:Update() end
     local inst = inInstance()
     if inst ~= wasInInstance then
