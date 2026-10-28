@@ -213,6 +213,17 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   REÇUES survivent aussi** (question de l'agent, « oui » du user le même jour) : même règle des 15
   minutes, une alerte écartée reste écartée, la liste « en route » est gardée.
   Remplace la phrase « Aucun appel n'est sauvegardé : un `/reload` les oublie ».
+- **D18** (user, 2026-10-28, « oui il faut que ça dure dans le temps un peu, on sait jamais », après
+  la séance PTR : se déconnecter mort ramène en fantôme, l'encart n'existe plus) — **« Ton appel » a sa
+  case de message et un bouton « Mettre à jour »** (Entrée aussi), vivant, en fantôme, après une
+  déco-reco. Précisé par l'agent : un clic est un geste, le message part à la guilde et sur Discord
+  avec le même numéro ; morts, position et tueurs ne bougent pas ; Discord garde son rythme (une ligne
+  par 2 minutes, la fenêtre dit « dans N s », puis « pas à jour » jusqu'au geste suivant) ; chaque
+  mise à jour PARTIE relance les 15 minutes (D11 inchangée : le même message deux fois ne prolonge
+  rien). La case suit le message de l'appel sans écraser ce que le joueur écrit ; la case de l'encart
+  reprend aussi ce message pendant un appel en cours (avant, une case vidée par un `/reload` effaçait
+  le message au premier clic). Le contrat ne change pas : c'est une ligne `SOS` de plus au même numéro.
+  Pas tranché : une durée de vie plus longue que 15 minutes (question posée au user).
 - **D11** (agent, validée par le user le 2026-10-27) — **Un appel dure 15 minutes après sa dernière mise à jour**, puis
   expire chez tout le monde.
 - **D12** (agent, validée par le user le 2026-10-27) — **« J'arrive » et « C'est réglé » s'écrivent aussi sur Discord** (ce
@@ -317,6 +328,10 @@ règle de CLAUDE.md).
     produit, montre la zone sans coordonnées.
 13. [human] « C'est réglé » : l'alerte disparaît chez B, la carte passe à « réglé ». Sans clic, au
     bout de 15 minutes, l'alerte disparaît chez B.
+14. [test + human] D18 : en fantôme, un nouveau message tapé dans « Ton appel » et « Mettre à jour » :
+    chez B, l'alerte montre le nouveau message, même numéro, mêmes morts ; sur Discord, une ligne
+    `SOS` au même numéro (tout de suite, ou après « dans N s » et un nouveau clic). Témoin : l'alerte
+    de B avant le clic. Tests : `test_wpp_call.lua`, `test_wpp_alertframe.lua`, `test_wpp_panel.lua`.
 
 ## Contrat
 

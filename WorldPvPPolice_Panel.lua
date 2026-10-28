@@ -147,6 +147,9 @@ end
 
 function Panel:ShowUnder(dialog, state)
     local f = self:Build()
+    -- Pendant un appel en cours, la case reprend SON message (envoyé d'ici, de « Ton appel », ou gardé
+    -- avant un /reload) : une case vide l'effacerait au clic, et « Libérer » n'enverrait rien (D3).
+    if NS.Call:IsActive() then f.box:SetText(NS.Call.active.msg or "") end
     self:Anchor(dialog)
     self:Refresh(state)
     f:Show()
@@ -154,8 +157,8 @@ end
 
 -- Une nouvelle mort efface le compte rendu de la précédente. Hors d'un appel en cours, elle repart
 -- aussi d'une case VIDE : sinon le message d'un vieil appel repartirait, des heures plus tard, au
--- premier clic sur « Libérer l'esprit » (D3). Pendant un appel en cours, le texte reste : le clic sur
--- « Libérer » envoie la mise à jour (compteur de morts).
+-- premier clic sur « Libérer l'esprit » (D3). Pendant un appel en cours, la case reprend le message de
+-- l'appel (ShowUnder) : le clic sur « Libérer » envoie la mise à jour (compteur de morts).
 function Panel:NewDeath()
     self.status, self.report = nil, nil
     if not self.frame or NS.Call:IsActive() then return end

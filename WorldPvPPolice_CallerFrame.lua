@@ -5,13 +5,30 @@
 -- D16), qui est en route, et le bouton « C'est réglé ». Elle reste après « Libérer l'esprit », quand
 -- l'encart de la mort a disparu : c'est là que l'appelant voit si son appel est parti. Elle se ferme
 -- d'elle-même quand l'appel expire (D11). En tête de la pile de _AlertFrame.lua, déplaçable comme elle.
+-- Sa case de message (D18) met l'appel à jour sans mourir : en fantôme, après une déco-reco.
 local _, NS = ...
 local L = NS.L
 
 local CallerFrame = {}
 NS.CallerFrame = CallerFrame
 
-local HEIGHT = 96
+local HEIGHT = 128
+local MAX_MESSAGE_BYTES = 120   -- comme la case de l'encart (_Panel.lua)
+
+local function buildMessageBox(f)
+    local box = CreateFrame("EditBox", "WorldPvPPoliceCallerMessage", f, "InputBoxInstructionsTemplate")
+    box:SetSize(NS.AlertFrame.WIDTH - 170, 22)
+    box:SetPoint("BOTTOMLEFT", 28, 42)
+    box:SetAutoFocus(false)
+    box:SetMaxBytes(MAX_MESSAGE_BYTES)
+    box.Instructions:SetText(L["Message (facultatif)"])
+    box:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+        CallerFrame:Send()
+    end)
+    box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    return box
+end
 
 function CallerFrame:Build()
     if self.frame then return self.frame end
@@ -20,10 +37,16 @@ function CallerFrame:Build()
     f:SetPoint("TOP", AF:Pile(), "TOP")
     f.title = AF.Text(f, "GameFontNormal", nil, -18)
     f.status = AF.Text(f, "GameFontHighlightSmall", f.title, -4)
-    f.enRoute = AF.Text(f, "GameFontHighlightSmall", f.status, -2, AF.WIDTH - 170)
+    f.enRoute = AF.Text(f, "GameFontHighlightSmall", f.status, -2)
+    f.box = buildMessageBox(f)
+    f.update = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.update:SetSize(110, 22)
+    f.update:SetPoint("LEFT", f.box, "RIGHT", 8, 0)
+    f.update:SetText(L["Mettre à jour"])
+    f.update:SetScript("OnClick", function() CallerFrame:Send() end)
     f.settle = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.settle:SetSize(120, 22)
-    f.settle:SetPoint("BOTTOMRIGHT", -18, 16)
+    f.settle:SetPoint("BOTTOMRIGHT", -18, 14)
     f.settle:SetText(L["C'est réglé"])
     f.settle:SetScript("OnClick", function() CallerFrame:Settle() end)
     self.frame = f
@@ -36,11 +59,25 @@ local function count(set)
     return n
 end
 
+-- « Envoyé » seulement si la dernière ligne revenue en jeu (D16) est celle de l'appel tel qu'il est :
+-- une mort notée ou un message changé depuis, et Discord n'est plus à jour. Le délai de 2 minutes
+-- entre deux lignes se compte devant le joueur ; passé, il faut un geste (« Mettre à jour »).
 local function discordState(a)
-    if a.discordSig then return L["Discord : envoyé"] end
     if a.pending then return L["Discord : envoi en cours"] end
+    local line = NS.Call:CurrentLine(a)
+    if a.discordSig and (not line or a.discordSig == line) then return L["Discord : envoyé"] end
     if not NS.Discord.Stream() then return L["Discord : non relié"] end
-    return L["Discord : pas envoyé"]
+    local wait = NS.Call:DiscordWait(a)
+    if wait > 0 then return string.format(L["Discord : dans %d s"], wait) end
+    return a.discordSig and L["Discord : pas à jour"] or L["Discord : pas envoyé"]
+end
+
+-- La case suit le message de l'appel quand il change (envoyé d'ici ou de l'encart, repris après un
+-- /reload), sans écraser ce que le joueur est en train d'écrire.
+local function fillBox(f, a)
+    if a.msg == f.msgShown or f.box:HasFocus() then return end
+    f.box:SetText(a.msg or "")
+    f.msgShown = a.msg
 end
 
 local function fill(f, a)
@@ -53,6 +90,7 @@ local function fill(f, a)
     else
         f.enRoute:SetText(L["Personne en route pour l'instant"])
     end
+    fillBox(f, a)
 end
 
 -- Montre, met à jour ou cache la fenêtre selon l'appel en cours ; la pile des alertes se replace
@@ -72,6 +110,13 @@ end
 
 function CallerFrame:Shown()
     return self.frame and self.frame:IsShown() and self.frame or nil
+end
+
+-- « Mettre à jour » ou Entrée (un geste) : le message de la case part avec l'appel (NS.Call:UpdateMessage).
+function CallerFrame:Send()
+    if not self.frame then return end
+    NS.Call:UpdateMessage(self.frame.box:GetText() or "")
+    self:Update()
 end
 
 -- « C'est réglé » (un geste) : END à la guilde et sur Discord, l'appel est clos (NS.Call:Settle).

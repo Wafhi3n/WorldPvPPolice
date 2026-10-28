@@ -50,6 +50,7 @@ local T = {
     ["Ton appel n°%d"]                = "Dein Ruf Nr. %d",
     ["C'est réglé"]                   = "Erledigt",
     ["Discord : pas envoyé"]          = "Discord: nicht gesendet",
+    ["Discord : pas à jour"]          = "Discord: nicht aktuell",
     ["Personne en route pour l'instant"] = "Noch niemand unterwegs",
 }
 for k, v in pairs(T) do NS.L[k] = v end

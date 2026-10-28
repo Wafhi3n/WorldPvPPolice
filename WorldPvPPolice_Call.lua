@@ -207,14 +207,37 @@ function Call:ToDiscord(a, c, gesture)
         a.pending = nil   -- jamais revenue (CheckEcho n'est pas encore passé) : comme refusée
     end
     if not gesture then return "nogesture" end
-    if a.discordAt then
-        local wait = Call.DISCORD_EVERY - (now(p) - a.discordAt)
-        if wait > 0 then return "later", math.ceil(wait) end
-    end
+    local wait = self:DiscordWait(a)
+    if wait > 0 then return "later", wait end
     if not pcall(p.sendDiscord, club, stream, line) then return "failed" end
     a.pending = { line = line, at = now(p) }
     call(p.after, Call.ECHO_WAIT + 1, function() self:CheckEcho() end)
     return "pending"
+end
+
+-- Secondes avant que la ligne suivante de cet appel puisse partir sur Discord (0 = dès le geste).
+function Call:DiscordWait(a)
+    if not a.discordAt then return 0 end
+    return math.max(0, math.ceil(Call.DISCORD_EVERY - (now(self.probe) - a.discordAt)))
+end
+
+-- La ligne Discord de l'appel tel qu'il est (nil sans position) : « Ton appel » la compare à la
+-- dernière revenue en jeu pour dire si Discord est à jour.
+function Call:CurrentLine(a)
+    if not (a and a.snap and a.snap.map) then return nil end
+    return Line.BuildSOS(fields(a, text((call(self.probe.me)))))
+end
+
+-- L'appel tel qu'il est, à la guilde puis, sur un geste, au fil Discord. Rend (compte rendu, parti ?) :
+-- parti = la guilde l'a pris ou une ligne Discord attend son retour.
+function Call:Deliver(a, gesture)
+    local c = fields(a, text((call(self.probe.me))))
+    local payload, why = Line.EncodeSOS(c)
+    if not payload then return { err = why }, false end
+    local report = { n = a.n, deaths = c.deaths }
+    report.guild = self:ToGuild(a, payload)
+    report.discord, report.wait = self:ToDiscord(a, c, gesture)
+    return report, report.guild == "sent" or report.discord == "pending"
 end
 
 -- L'appel a changé (envoi, retour de la ligne, quelqu'un en route, réglé) : la fenêtre « Ton appel »
@@ -279,16 +302,11 @@ function Call:Send(msg, origin, state, serial)
         a.n, consume = nextNumber(p)
         if not a.n then return { err = "num" } end
     end
-    local c = fields(a, text((call(p.me))))
-    local payload, why = Line.EncodeSOS(c)
-    if not payload then return { err = why } end
-    local report = { n = a.n, deaths = c.deaths }
-    report.guild = self:ToGuild(a, payload)
-    report.discord, report.wait = self:ToDiscord(a, c, origin ~= "auto")
+    local report, sent = self:Deliver(a, origin ~= "auto")
+    if report.err then return report end
     -- L'appel dure 15 minutes après la dernière mise à jour PARTIE (D11) : un double clic qui n'envoie
     -- rien ne le prolonge pas. Un appel dont rien n'est parti n'est pas ouvert, et garde son numéro.
     -- Une ligne Discord en cours compte : sans appel ouvert, son retour n'aurait rien à confirmer.
-    local sent = report.guild == "sent" or report.discord == "pending"
     if opening and not sent then return report end
     if opening then
         consume()
@@ -296,6 +314,20 @@ function Call:Send(msg, origin, state, serial)
         keep(self, a)
     end
     if sent then a.sentAt = now(p) end
+    self:Changed()
+    return report
+end
+
+-- « Ton appel » (D18) : un nouveau message pour l'appel en cours, sans nouvelle mort (vivant, en
+-- fantôme, après une déco-reco). Un clic ou Entrée = un geste : la guilde et le fil Discord, comme une
+-- mise à jour après une mort ; morts, position et tueurs ne bougent pas. Le même message deux fois
+-- n'envoie rien et ne prolonge pas l'appel (D11). Rend nil sans appel en cours, sinon le compte rendu.
+function Call:UpdateMessage(msg)
+    if not self:IsActive() then return nil end
+    local a = self.active
+    a.msg = Line.Clean(msg)
+    local report, sent = self:Deliver(a, true)
+    if sent then a.sentAt = now(self.probe) end
     self:Changed()
     return report
 end
