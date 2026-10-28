@@ -251,7 +251,8 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **D21** (user, 2026-10-28 : « le but c'est que la guilde joue ensemble, donc deux personnes qui font
   un appel à l'aide doivent être reliées, et sur l'addon il va falloir un bouton pour lancer le
   groupage / raid ») — **Monter le groupe depuis l'appel.** Le côté Discord est fait par le bot (une
-  carte par zone, sa P10). Côté jeu, **proposition de l'agent, À VALIDER, pas codée** :
+  carte par zone, sa P10). Côté jeu, **proposition de l'agent, validée par le user le 2026-10-28
+  (« oui continue »), pas codée** :
   - dans « Ton appel », un bouton **« Grouper »** : l'appelant invite d'un clic ceux qui sont en route
     vers lui ET les autres guildiens qui appellent dans la même zone (un appel reçu sur la même carte du
     jeu, encore en cours) ; il devient chef ; au-delà de 5, le groupe passe en raid avant les
