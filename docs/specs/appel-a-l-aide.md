@@ -72,7 +72,7 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **Pas de royaume affiché** (règle du user) : les noms s'écrivent sans royaume.
 - **Pas de liste d'ennemis** (KOS), pas de suivi des tueurs entre les appels.
 - **Pas de relais par un autre guildien** pour un joueur sans Discord relié : on attend la mesure M4
-  avant de décider s'il en faut un.
+  avant de décider s'il en faut un. Options et cas : `appel-sans-pont-discord.md` (O2, brouillon).
 
 ## Cas particuliers
 
@@ -121,7 +121,8 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   est ignorée : au pire, le geste suivant en envoie une deuxième.
 - **Guilde non reliée à Discord, ou en flux mêlé** : l'appel part en jeu seulement ; l'encart le dit
   discrètement (« Discord : non relié »). En flux mêlé, l'addon ne peut pas savoir que la guilde est
-  reliée (mesuré) : on traite comme non relié.
+  reliée (mesuré) : on traite comme non relié. Ce qu'on pourrait faire de plus (expliquer, relayer,
+  passer par le chat de guilde en flux mêlé) : `appel-sans-pont-discord.md`, brouillon à trancher.
 - **Pas de guilde** : pas d'encart.
 - **Morts répétées** : pendant un appel en cours (D11), chaque mort par un joueur (l'encart s'ouvre)
   augmente le compteur ; rien ne part à la mort elle-même, la mise à jour part au geste suivant
