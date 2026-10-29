@@ -1,8 +1,9 @@
 # Un appel sans pont entre le jeu et Discord
 
-> État : **brouillon** · 2026-10-29 · Demande du user (« penser à créer une spec si on n'a pas de liaison
-> de données entre WoW et Discord ») ; options et recommandations de l'agent, **rien de décidé**. La
-> spec de l'appel lui-même reste `appel-a-l-aide.md`.
+> État : **validée en partie** · 2026-10-29 · Demande du user (« penser à créer une spec si on n'a pas de
+> liaison de données entre WoW et Discord ») ; options de l'agent, **tranchées par le user le même jour**
+> (S1 à S4) ; une question reste ouverte (Q5). Rien n'est codé. La spec de l'appel lui-même reste
+> `appel-a-l-aide.md`.
 
 ## Le problème
 
@@ -55,8 +56,11 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
     `test_pvp_relay.OneCard.test_un_appel_une_carte`).
   - Ne sert que le cas (c) : en (a) personne ne peut écrire, en (b) le fil n'existe pas.
   - **Recommandée seulement si M4 dit non.**
-- **O3 — En flux mêlé, la ligne dans le chat de guilde.** Sur le même geste que l'envoi Discord,
-  l'addon écrit aussi la ligne `SOS` dans le chat de guilde, et le pont mêlé la porte sur Discord.
+- **O3 — En flux mêlé, la ligne dans le chat de guilde** (retenue par le user sous le nom « forcer
+  Discord en chat fusionné », S3). Sur le même geste que l'envoi Discord, l'addon écrit la ligne
+  (`SOS`, et aussi `OMW` et `END`, sinon la carte ne saurait ni qui arrive ni quand c'est réglé) dans le
+  chat de guilde, et le pont mêlé la porte sur Discord. Les lignes tiennent déjà dans les 255 octets
+  d'une ligne de chat (`Line.MAX_BYTES`).
   Mesuré le 2026-10-10 avec une ligne de Crafting Order : une ligne écrite par un addon dans le chat de
   guilde arrive lisible sur Discord en flux mêlé.
   - Le prix : une ligne visible par toute la guilde à chaque appel. Dans une guilde non reliée (a), ce
@@ -70,9 +74,9 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
 ## Ce qu'on NE fait PAS
 
 - **Aucun envoi sans geste**, relais compris (règle de `appel-a-l-aide.md`).
-- **Rien hors du jeu** (O4) : un addon n'a pas de réseau, ses SavedVariables ne s'écrivent qu'au
-  `/reload` ou à la déconnexion, et une appli à installer sur chaque PC sort du projet. À rouvrir
-  seulement si le user le demande.
+- **Rien hors du jeu** (O4, écartée par le user : S4) : un addon n'a pas de réseau, ses SavedVariables
+  ne s'écrivent qu'au `/reload` ou à la déconnexion. Le seul chemin est le pont du jeu vers Discord,
+  puis le bot.
 - **Pas de détection du flux mêlé** : impossible pour un addon (mesuré). O1 énumère, O3 est un choix
   du joueur.
 - **Pas de réglage de la guilde à la place du joueur** : le lien Discord et sa case restent au maître de
@@ -96,6 +100,16 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
   jeu : O1 le lui dit.
 - **O3, le bot efface la ligne brute du salon relié** : en flux mêlé, l'effacer sur Discord la retire-t-il
   aussi du chat de guilde en jeu ? Pas mesuré (M12).
+- **O3 allumée alors que la guilde a le fil séparé** : l'addon voit le fil (`Discord.Stream()`) et
+  l'emploie ; l'option ne sert alors à rien et n'écrit rien dans le chat de guilde.
+- **O3, pas de retour à attendre** : en flux mêlé, aucune ligne ne revient dans un fil Discord. L'addon
+  sait seulement que la ligne est partie dans le chat de guilde, et l'encart le dit (« Discord : par le
+  chat de guilde ») au lieu de « envoyé ».
+- **O3, côté bot** : en flux mêlé, TOUT le chat de guilde arrive dans le salon relié comme des messages
+  du jeu. Le bot n'y traite que les lignes d'appel, mais aujourd'hui il note chaque message du jeu dans
+  son journal, donc tout le chat de guilde. En `repondre`, il ne devra plus noter que les lignes
+  d'appel. Son rattrapage relit au plus 200 messages du salon relié (`HISTORY`) : dans une guilde
+  bavarde, une ligne ratée de plus de 200 messages ne sera pas reprise. Accepté.
 
 ## Mesures, avant de coder
 
@@ -112,26 +126,48 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
 Les trois demandent un client Forever ou le PTR, avec une guilde dont on peut changer les réglages
 Discord (le serveur de test du user).
 
-## Décisions à prendre (user)
+## Décisions
 
-1. O1 (expliquer « non relié ») : oui ou non ?
-2. O2 (relais par un guildien) : seulement si M4 dit non ?
-3. O3 (ligne dans le chat de guilde, éteinte par défaut) : à proposer aux guildes en flux mêlé ?
-4. Ce qui doit être prêt pour le lancement du 4/11, et ce qui peut attendre.
+- **S1** (user, 2026-10-29, « 1 OUI ») — **O1 retenue** : l'addon explique « Discord : non relié » et
+  qui peut y remédier.
+- **S2** (user, 2026-10-29, « 2 OUI ») — **O2 retenue, si M4 dit non** : un guildien relié relaie la
+  ligne restée bloquée, à son propre clic sur « J'arrive ».
+- **S3** (user, 2026-10-29, « on peut rajouter une option pour forcer l'activation de Discord (Discord
+  avec chat fusionné) ») — **O3 retenue comme une option** que le joueur allume : « Discord en chat
+  fusionné ». Éteinte par défaut ; sans effet quand l'addon voit le fil séparé. O1 la nomme.
+- **S4** (user, 2026-10-29, « pas d'appli hors jeu, on doit juste avoir une liaison WoW > Discord, le
+  bot récupère la data sur Discord ») — **Un seul chemin : le pont du jeu vers Discord**, puis le bot
+  qui lit Discord. O4 écartée pour de bon ; rien ne repasse de Discord vers le jeu.
+
+## Question ouverte
+
+- **Q5 — Qui allume « Discord en chat fusionné » ?** L'option ne fait une carte complète que si les
+  `J'arrive` et `C'est réglé` passent eux aussi par le chat de guilde.
+  - (a) **Chaque joueur** l'allume pour lui (`/wpp fusion on`). Simple, mais un répondant qui ne l'a pas
+    allumée n'apparaît pas « en route » sur la carte.
+  - (b) **Elle suit l'appel** : l'appelant l'a allumée, son message d'addon le dit, et le `J'arrive` de
+    chaque guildien prend le même chemin. Une seule personne à régler par appel, mais le message d'addon
+    gagne un champ (contrat de `appel-a-l-aide.md`, à versionner).
+  - Proposition de l'agent : (b), parce que dans une guilde en flux mêlé, c'est souvent un seul
+    officier qui saura qu'il faut l'allumer.
 
 ## Critères d'acceptation (des options retenues)
 
 1. [test] (O1) Guilde sans fil Discord : l'encart dit « Discord : non relié », son infobulle énumère
-   les trois conditions et nomme le maître de guilde ou un officier ; aucun envoi Discord n'est tenté.
-   `/wpp discord` répond en une ligne (skill `chat-output`).
+   les trois conditions, nomme le maître de guilde ou un officier, et l'option « Discord en chat
+   fusionné » ; aucun envoi Discord n'est tenté. `/wpp discord` répond en une ligne (skill
+   `chat-output`).
 2. [test] (O2) Au clic de B sur « J'arrive », la ligne `SOS` de A ne part que si elle n'a pas été vue
    dans le fil, une fois par version, et avant l'`OMW` de B ; jamais hors d'un clic.
 3. [test, bot] (O2) Une ligne `SOS` relayée tombe sur la carte de A ; la ligne de A arrivée ensuite la
    met à jour sans nouvelle mention. Déjà vrai : à épingler par un test nommé « relais ».
 4. [test] (O3) Éteinte : aucune ligne dans le chat de guilde. Allumée : une ligne par geste, au plus
-   une mise à jour toutes les 2 minutes ; rien en instance.
+   une mise à jour toutes les 2 minutes ; rien en instance ; rien dans le chat de guilde quand le fil
+   séparé existe.
 5. [human] (O3) Dans une guilde en flux mêlé, sur le serveur de test : un appel fait sa carte dans
-   `#alertes-pvp`. Témoin : le même appel en flux séparé.
+   `#alertes-pvp`, avec qui arrive et « réglé ». Témoin : le même appel en flux séparé.
+6. [test, bot] (O3) En `repondre`, le journal du bot ne note que les lignes d'appel ; un message de chat
+   ordinaire venu du jeu n'y laisse aucune trace de son texte.
 
 ## Renvois
 
@@ -141,3 +177,11 @@ Discord (le serveur de test du user).
   (`docs/hebergement.md`, « Ce qu'il faut »).
 - Skill public `wow-forever-api`, `chat-channels-and-communities.md` : « Guild chat bridged to a
   Discord channel » (flux mêlé, fil séparé, `C_Club.SendMessage` sur un geste).
+
+## Plan (2026-10-29) — volatile, meurt quand c'est fait
+
+- **T1** (addon + tests de l'outillage) — O1 : l'infobulle et `/wpp discord`. Aucune mesure préalable.
+- **T2** (addon + tests de l'outillage) — O3 selon Q5 : l'option, la route par le chat de guilde, le
+  compte rendu « par le chat de guilde ». Puis M12 au banc, sur le serveur de test en flux mêlé.
+- **T3** (bot) — En `repondre`, ne noter que les lignes d'appel (critère 6).
+- **T4** (addon) — O2, seulement après M4 (un guildien sans Discord : un testeur extérieur) et M13.
