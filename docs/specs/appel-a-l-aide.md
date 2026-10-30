@@ -82,7 +82,8 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   premier dans l'ordre du récap (le coup fatal, sinon le plus récent) ; pas d'encart seulement si
   **tous** les coups sont lisibles et viennent de `Creature-`, `Vehicle-`, `GameObject-` ou de
   l'environnement (chute, noyade, lave) ; un **familier** (`Pet-…`), un GUID secret ou absent = inconnu
-  (son maître est peut-être un joueur) : encart.
+  (son maître est peut-être un joueur) : encart. **Mes propres coups** (un démoniste qui se blesse) comptent
+  comme l'environnement : je ne suis ni mon tueur ni un signe de PvP (vu au PTR le 2026-10-30).
 - **Tué par une invocation** (Abomination ou goule de chevalier de la mort, totem, infernal…) : son GUID
   est `Creature-`, comme un monstre (mesuré sur le PTR Retail, M1). Si son maître a frappé lui aussi
   dans les derniers coups du récap (10 sur le PTR), c'est lui le tueur affiché. **Limite connue** :

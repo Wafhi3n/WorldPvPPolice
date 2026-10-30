@@ -63,11 +63,14 @@ local function classOf(guid, playerInfo)
 end
 
 -- Un coup du récap : "player" (+ son GUID), "npc" (monstre, invocation, véhicule, objet, chute,
--- noyade), ou "unknown" (familier, GUID absent, secret ou d'une sorte inattendue).
-local function hitKind(hit)
+-- noyade, mes propres coups), ou "unknown" (familier, GUID absent, secret ou d'une sorte inattendue).
+-- `me` = mon GUID : un démoniste qui se blesse lui-même n'est ni son tueur ni un signe de PvP (vu au PTR
+-- le 2026-10-30), il compte comme une chute.
+local function hitKind(hit, me)
     if field(hit, "event") == "ENVIRONMENTAL_DAMAGE" then return "npc" end
     local guid = field(hit, "sourceGUID")
     if type(guid) ~= "string" then return "unknown" end
+    if guid == me then return "npc" end
     local kind = guid:match("^(%a+)%-")
     if kind == "Player" then return "player", guid end
     if NPC_KINDS[kind] then return "npc" end
@@ -105,16 +108,17 @@ end
 -- équipe qui campe), une fois chacun, dans l'ordre du récap (le coup fatal, puis du plus récent au plus
 -- ancien) : { key = GUID, name, class, className }. "npc" seulement si TOUS les coups sont lisibles et
 -- d'un monstre ; sinon "unknown" (le joueur décide, D10). `playerInfo(guid)` rend (classe localisée,
--- jeton de classe) comme GetPlayerInfoByGUID.
-function Death.KillerFrom(events, playerInfo)
+-- jeton de classe) comme GetPlayerInfoByGUID. `me` = mon GUID, ou nil : mes coups ne me désignent pas.
+function Death.KillerFrom(events, playerInfo, me)
     if type(events) ~= "table" then return { status = "unknown", players = {} } end
+    if not readable(me) then me = nil end
     local seen, unsure, anyPlayer = 0, false, false
     local players, byGuid = {}, {}
     for i = 1, MAX_EVENTS do
         local hit = field(events, i)
         if type(hit) ~= "table" then break end
         seen = i
-        local kind, guid = hitKind(hit)
+        local kind, guid = hitKind(hit, me)
         if kind == "player" then
             anyPlayer = true
             notePlayer(players, byGuid, hit, guid, playerInfo)
@@ -278,7 +282,7 @@ end
 function Death:Capture()
     local p = self.probe
     self.last = {
-        killer = Death.KillerFrom(call(p.events), p.playerInfo),
+        killer = Death.KillerFrom(call(p.events), p.playerInfo, call(p.guid)),
         snap = Death.Snapshot(p),
         at = call(p.now) or 0,
     }
@@ -296,7 +300,7 @@ end
 -- Relit le tueur seul (le récap peut arriver après la fenêtre de mort).
 function Death:RereadKiller()
     if not self.last then return nil end
-    self.last.killer = Death.KillerFrom(call(self.probe.events), self.probe.playerInfo)
+    self.last.killer = Death.KillerFrom(call(self.probe.events), self.probe.playerInfo, call(self.probe.guid))
     return self.last.killer
 end
 
