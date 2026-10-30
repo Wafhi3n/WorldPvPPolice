@@ -262,6 +262,10 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   nom du perso (dit par le user le 2026-10-27, non mesuré : M5). L'addon ne peut pas lire ce réglage
   (getter protégé) ; le bot n'affiche que le nom de la ligne, jamais l'auteur Discord : pas de doublon.
 
+- **D22** (user, 2026-10-30, « ok go » sur la proposition de l'agent) — **Le tueur en nom complet** dans
+  les lignes et à l'écran, pour que le bot puisse compter les morts par joueur (avis de recherche,
+  `WorldPvPPoliceBot/docs/specs/avis-de-recherche.md`) : sur Forever, plusieurs joueurs partagent un prénom.
+
 ## Mesures à faire au banc (après le 2026-11-04)
 
 Aucune n'est faite **sur Forever**. Le banc demande **un perso de l'autre faction** pour tuer (un duel
@@ -330,6 +334,9 @@ la mesure sur Forever.
   le téléphone = `false`, GUID lisible. Pas relevé : le délai. Sur Forever, à mesurer avec la même
   sonde (attendu : « Prénom Nom », la forme des émetteurs mesurée le 2026-09-27 ; le code ne dépend
   pas de la forme, il chuchote au nom que la liste donne).
+- **M14** (D22) — Sur Forever, un tueur d'un autre compte : le récap (`sourceName`) rend-il « Prénom » ou
+  « Prénom Nom » ? Et `GetPlayerInfoByGUID`, 6e retour ? La ligne doit montrer `kPrénom_Nom`. Si seul le
+  prénom est lisible, les comptes du bot par joueur ne valent rien : à dire avant d'allumer le seuil.
 
 ## Critères d'acceptation
 
@@ -397,9 +404,12 @@ OMW <Répondant> > <Perso> #SOS<n>
 END <Perso> #SOS<n>
 ```
 
-- `<Perso>`, `<Répondant>`, `<T1>…` : le PREMIER MOT du nom, sans royaume, ni espace, ni virgule.
-  Sur Forever un nom complet est « Prénom Nom » (mesuré le 2026-09-27) : la ligne n'en garde que le
-  prénom ; sur Retail, « Nom-Royaume » : elle garde le nom. Affiché seulement, jamais comparé.
+- `<Perso>`, `<Répondant>` : le PREMIER MOT du nom, sans royaume, ni espace, ni virgule. Sur Forever un
+  nom complet est « Prénom Nom » (mesuré le 2026-09-27) : la ligne n'en garde que le prénom ; sur Retail,
+  « Nom-Royaume » : elle garde le nom. Affiché seulement, jamais comparé.
+- `<T1>…` (D22, 2026-10-30, avant toute release) : le nom le plus COMPLET connu, sans royaume, ses espaces
+  en `_` (`Krosh_Ombrelune`) ; relu « Krosh Ombrelune ». Le bot y compte les morts par joueur. Une ligne au
+  prénom seul (`kKrosh`) reste valide : le récap peut ne donner que lui (M14).
 - `<Zone>` : nom de la zone dans la langue de l'appelant (peut contenir espaces et apostrophes).
   **Garanti par l'addon** : ni `( ) # | [ ]` dans la zone, ni `# | [ ]` ni caractère de contrôle dans
   le message ; le lecteur coupe donc la queue au ` #SOS`, puis détache ` (<x>, <y>)` en fin de zone
@@ -458,8 +468,8 @@ copie d'avant ce champ ignore un `SOS` qui le porte.
 `<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord, ou `-` tous les deux (zone seule,
 D14). `<tueurs>`, `<CLASSES>` : les deux listes alignées de la ligne Discord (`Xyz,Abc,Def`,
 `ROGUE,MAGE,-`), `-` pour une liste vide ; des tueurs sans aucune classe connue = `-` en `<CLASSES>`.
-`<message>` peut être vide (le champ reste). Les tueurs s'écrivent au premier mot (ils ne sont
-qu'affichés) ; l'appelant d'un `OMW` s'écrit en **nom complet**, tel que `CHAT_MSG_ADDON` l'a donné
+`<message>` peut être vide (le champ reste). Les tueurs s'écrivent comme sur la ligne Discord (D22) ;
+l'appelant d'un `OMW` s'écrit en **nom complet**, tel que `CHAT_MSG_ADDON` l'a donné
 comme émetteur du `SOS` : « Prénom Nom » sur Forever (une espace, pas de royaume), « Nom-Royaume »
 sur Retail. Il sert à reconnaître l'appel ; le royaume et le nom de famille ne s'affichent jamais dans
 une ligne. Nom du fil : mots séparés d'une espace, ni blanc au bord, ni tabulation, ni `| [ ] # : ,`.

@@ -85,6 +85,23 @@ local function shortName(name)
 end
 Line.ShortName = shortName
 
+-- Un TUEUR dans une ligne (D22) : le nom le plus complet connu, sans royaume, ses espaces en `_` (une liste
+-- de tueurs n'a pas d'espace) : `Prénom_Nom` sur Forever. Le prénom seul mélangerait plusieurs joueurs dans
+-- les comptes du bot. nil si illisible, vide ou réservé.
+local function killerToken(name)
+    if not isText(name) then return nil end
+    name = (name:match("^([^%-]+)") or ""):gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", "_")
+    if name == "" or name:find(RESERVED) then return nil end
+    return name
+end
+
+-- Le même nom à afficher : « Prénom Nom ».
+local function killerName(name)
+    local token = killerToken(name)
+    return token and (token:gsub("_", " ")) or nil
+end
+Line.KillerName = killerName
+
 -- Un nom sur le FIL entre copies de l'addon : le nom COMPLET tel que CHAT_MSG_ADDON le rend (l'une ou
 -- l'autre forme), qui sert à reconnaître l'appelant. Des mots séparés d'UNE espace ; ni tabulation
 -- (séparateur du fil), ni `| [ ] # : ,`, ni caractère de contrôle.
@@ -141,14 +158,14 @@ local function checkCall(c)
 end
 
 -- Les tueurs d'un appel (D15) : `c.killers` = { { name, class }, … }, ou le raccourci d'un seul tueur
--- `c.killer` / `c.class`. Seuls les noms lisibles restent (sans royaume), MAX_KILLERS au plus ; une
--- classe sans nom ne reste pas (elle n'a de sens qu'à côté d'un nom).
+-- `c.killer` / `c.class`. Seuls les noms lisibles restent (sans royaume, en jeton, D22), MAX_KILLERS au
+-- plus ; une classe sans nom ne reste pas (elle n'a de sens qu'à côté d'un nom).
 local function killersOf(c)
     local src = c.killers
     if type(src) ~= "table" then src = { { name = c.killer, class = c.class } } end
     local list = {}
     for _, k in ipairs(src) do
-        local name = type(k) == "table" and shortName(k.name)
+        local name = type(k) == "table" and killerToken(k.name)
         if name and #list < Line.MAX_KILLERS then list[#list + 1] = { name = name, class = classToken(k.class) } end
     end
     return list
@@ -247,7 +264,7 @@ local function killerList(names, classes)
         if name ~= raw then return nil end
         local class = classes and classes[i]
         if class == "-" then class = nil elseif class and not classToken(class) then return nil end
-        list[i] = { name = name, class = class }
+        list[i] = { name = (name:gsub("_", " ")), class = class }   -- D22 : `Prénom_Nom` se relit « Prénom Nom »
     end
     return list
 end
