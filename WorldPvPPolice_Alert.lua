@@ -170,7 +170,7 @@ function Alert:OnSOS(m, sender)
         a.dismissed = nil   -- une mort de plus : l'alerte écartée revient
     end
     a.map, a.x, a.y, a.zone = m.map, m.x, m.y, zoneOf(p, m.map)
-    a.deaths, a.killers, a.msg = m.deaths, m.killers or {}, m.msg
+    a.deaths, a.killers, a.msg, a.fusion = m.deaths, m.killers or {}, m.msg, m.fusion
     a.updatedAt = now(p)
     return a
 end
@@ -261,8 +261,9 @@ end
 -- ===== « J'arrive » (un geste) =====
 
 -- Prévient la guilde (l'appelant reconnaît son nom complet) et le fil Discord (D12, la ligne
--- « OMW <moi> > <appelant> #SOS<n> », sans suivi de son retour : rien n'en dépend), pose un point de
--- route sur le cadavre s'il a des coordonnées (pas en zone seule, D14). Rend { guild, discord,
+-- « OMW <moi> > <appelant> #SOS<n> », sans suivi de son retour : rien n'en dépend), ou le chat de guilde
+-- si l'appel y passe (S5 : l'appelant a l'option, il le dit dans son SOS, je n'ai rien à régler), pose un
+-- point de route sur le cadavre s'il a des coordonnées (pas en zone seule, D14). Rend { guild, discord,
 -- waypoint } ou nil si l'alerte n'existe plus.
 function Alert:Respond(key)
     local a = self.list[key]
@@ -273,8 +274,12 @@ function Alert:Respond(key)
     local result = payload and call(p.sendGuild, payload)
     if is(result, 0) or is(result, true) then report.guild = "sent" end
     local club, stream = call(p.stream)
-    local line = club and Line.BuildOMW(call(p.me), a.sender, a.n)
-    if line then report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed" end
+    local line = Line.BuildOMW(call(p.me), a.sender, a.n)
+    if line and club then
+        report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
+    elseif line and a.fusion then
+        report.discord = pcall(p.sendChat, line) and "chat" or "failed"
+    end
     if a.x and a.y then report.waypoint = is(call(p.setWaypoint, a.map, a.x, a.y), true) end
     a.responded = true
     changed(self, "respond")
@@ -307,5 +312,6 @@ Alert.probe = {
     stream      = function() return NS.Discord.Stream() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
+    sendChat    = function(line) C_ChatInfo.SendChatMessage(line, "GUILD") end,
     setWaypoint = setWaypoint,
 }

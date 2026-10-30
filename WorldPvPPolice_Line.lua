@@ -26,6 +26,7 @@ Line.MAX_KILLERS = 5        -- tueurs au plus dans un appel (D15)
 local HEAD_MAX = 200        -- octets de tête au plus une fois les tueurs ajoutés : le message garde sa place
 local TAB = string.char(9)
 local WIRE_FIELDS = { SOS = 10, OMW = 4, END = 3 }
+local FUSION = "F"          -- 11e champ facultatif d'un SOS : l'appel passe par le chat de guilde (S5)
 
 -- Une valeur qu'on a le droit de lire. Une valeur SECRÈTE ne se concatène pas, ne se compare pas
 -- (`v == nil` lève aussi : vu avec debug.newsecret de notre Elune) et ne se passe pas à :match : on
@@ -119,11 +120,11 @@ end
 Line.CutBytes = cutBytes
 
 -- Ajoute « <sep><msg> » à `head` si le message (nettoyé, coupé) tient dans MAX_BYTES ; la tête, elle,
--- n'est jamais coupée.
-local function withMessage(head, msg, sep)
+-- n'est jamais coupée. `reserve` : les octets à laisser après le message.
+local function withMessage(head, msg, sep, reserve)
     msg = clean(msg)
     if msg == "" then return head, "" end
-    msg = cutBytes(msg, Line.MAX_BYTES - #head - #sep)
+    msg = cutBytes(msg, Line.MAX_BYTES - #head - #sep - (reserve or 0))
     if msg == "" then return head, "" end
     return head .. sep .. msg, msg
 end
@@ -302,10 +303,12 @@ end
 
 -- ===== Message d'addon de guilde =====
 -- Champs séparés par une tabulation, version en tête :
---   1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>   (émetteur = l'appelant)
+--   1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>[ F]   (émetteur = l'appelant)
 --   1 OMW <n> <appelant>                                                      (émetteur = le répondant)
 --   1 END <n>                                                                 (émetteur = l'appelant)
 -- <tueurs> et <CLASSES> : listes alignées séparées par des virgules, comme sur la ligne Discord.
+-- F (11e champ, absent sinon : un SOS sans lui ne change pas d'un octet) : l'appel passe par le chat de
+-- guilde, les « J'arrive » le suivent (S5 de docs/specs/appel-sans-pont-discord.md).
 
 local function wireKillers(list, count)
     if count == 0 then return TAB .. "-" .. TAB .. "-" end
@@ -320,9 +323,10 @@ function Line.EncodeSOS(c)
     if ok == "xy" then x, y = pct(c.x), pct(c.y) end
     local head = table.concat({ Line.WIRE_VERSION, "SOS", c.n, c.map, x, y, c.deaths }, TAB)
     head = fitKillers(head, killersOf(c), wireKillers)
-    local payload, msg = withMessage(head, c.msg, TAB)
+    local tail = c.fusion and TAB .. FUSION or ""
+    local payload, msg = withMessage(head, c.msg, TAB, #tail)
     if msg == "" then payload = head .. TAB end
-    return payload
+    return payload .. tail
 end
 
 function Line.EncodeOMW(n, caller)
@@ -372,7 +376,12 @@ local function decodeSOS(f)
     if not (n and map and d and okXY and killers) then return nil end
     local first = killers[1] or {}
     return { kind = "SOS", n = n, map = map, x = x, y = y, deaths = d, killers = killers,
-             killer = first.name, class = first.class, msg = clean(f[10]) }
+             killer = first.name, class = first.class, msg = clean(f[10]), fusion = f[11] == FUSION or nil }
+end
+
+local function fieldCountOk(f)
+    if f[2] == "SOS" and #f == WIRE_FIELDS.SOS + 1 then return f[#f] == FUSION end
+    return #f == WIRE_FIELDS[f[2]]
 end
 
 -- Relit un message d'addon ; nil (sans erreur) pour une autre version, une autre sorte ou un nombre
@@ -380,7 +389,7 @@ end
 function Line.Decode(payload)
     if not isText(payload) then return nil end
     local f = split(payload)
-    if f[1] ~= Line.WIRE_VERSION or #f ~= WIRE_FIELDS[f[2]] then return nil end
+    if f[1] ~= Line.WIRE_VERSION or not fieldCountOk(f) then return nil end
     if f[2] == "SOS" then return decodeSOS(f) end
     local n = num(f[3], 1)
     if not n then return nil end

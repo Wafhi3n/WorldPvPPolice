@@ -54,5 +54,20 @@ local T = {
     ["Discord : pas envoyé"]          = "Discord: nicht gesendet",
     ["Discord : pas à jour"]          = "Discord: nicht aktuell",
     ["Personne en route pour l'instant"] = "Noch niemand unterwegs",
+    -- Sans lien avec Discord
+    ["Discord : par le chat de guilde"] = "Discord: über den Gildenchat",
+    ["L'appel part en jeu, pas sur Discord. Il faut :"] = "Der Ruf geht im Spiel raus, nicht zu Discord. Dafür braucht es:",
+    ["- la guilde reliée à un serveur Discord ;"] = "- die Gilde mit einem Discord-Server verknüpft;",
+    ["- la case qui sépare le chat Discord du chat de guilde, cochée ;"] = "- das Häkchen, das den Discord-Chat vom Gildenchat trennt;",
+    ["- peut-être aussi ton compte Battle.net relié à Discord."] = "- vielleicht auch dein Battle.net-Konto mit Discord verknüpft.",
+    ["Le maître de guilde ou un officier s'en charge : Guilde et communautés (J), clic droit sur la guilde, ses réglages Discord."] = "Das erledigt die Gildenleitung oder ein Offizier: Gilde & Communitys (J), Rechtsklick auf die Gilde, ihre Discord-Einstellungen.",
+    ["Guilde en chat fusionné : /wpp fusion on."] = "Gilde mit zusammengelegtem Chat: /wpp fusion on.",
+    ["Discord en chat fusionné : désactivé."] = "Discord im zusammengelegten Chat: aus.",
+    ["Discord en chat fusionné : activé, mais sans effet : la guilde a son fil Discord séparé."] = "Discord im zusammengelegten Chat: an, aber ohne Wirkung: Die Gilde hat ihren getrennten Discord-Chat.",
+    ["Discord en chat fusionné : activé. Tes appels s'écrivent aussi dans le chat de guilde, les « J'arrive » suivent."] = "Discord im zusammengelegten Chat: an. Deine Rufe erscheinen auch im Gildenchat, „Ich komme“ folgt ihnen.",
+    ["Discord : relié."] = "Discord: verknüpft.",
+    ["Discord : non relié. Le maître de guilde ou un officier relie la guilde et coche la case qui sépare le chat Discord (Guilde et communautés, clic droit sur la guilde). Guilde en chat fusionné : /wpp fusion on."] = "Discord: nicht verknüpft. Die Gildenleitung oder ein Offizier verknüpft die Gilde und setzt das Häkchen, das den Discord-Chat trennt (Gilde & Communitys, Rechtsklick auf die Gilde). Gilde mit zusammengelegtem Chat: /wpp fusion on.",
+    ["où en est le lien avec Discord"] = "wie es um die Verknüpfung mit Discord steht",
+    ["guilde en chat fusionné : l'appel passe par le chat de guilde"] = "Gilde mit zusammengelegtem Chat: Der Ruf läuft über den Gildenchat",
 }
 for k, v in pairs(T) do NS.L[k] = v end
