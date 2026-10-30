@@ -55,5 +55,20 @@ local T = {
     ["Discord : pas envoyé"]          = "Discord: no enviado",
     ["Discord : pas à jour"]          = "Discord: sin actualizar",
     ["Personne en route pour l'instant"] = "Nadie en camino todavía",
+    -- Sans lien avec Discord
+    ["Discord : par le chat de guilde"] = "Discord: por el chat de hermandad",
+    ["L'appel part en jeu, pas sur Discord. Il faut :"] = "La llamada sale en el juego, no en Discord. Hace falta:",
+    ["- la guilde reliée à un serveur Discord ;"] = "- la hermandad vinculada a un servidor de Discord;",
+    ["- la case qui sépare le chat Discord du chat de guilde, cochée ;"] = "- la casilla que separa el chat de Discord del de hermandad, marcada;",
+    ["- peut-être aussi ton compte Battle.net relié à Discord."] = "- quizá también tu cuenta de Battle.net vinculada a Discord.",
+    ["Le maître de guilde ou un officier s'en charge : Guilde et communautés (J), clic droit sur la guilde, ses réglages Discord."] = "Se encarga quien lidera la hermandad o un oficial: Hermandad y comunidades (J), clic derecho en la hermandad, sus ajustes de Discord.",
+    ["Guilde en chat fusionné : /wpp fusion on."] = "Hermandad con chat combinado: /wpp fusion on.",
+    ["Discord en chat fusionné : désactivé."] = "Discord con chat combinado: desactivado.",
+    ["Discord en chat fusionné : activé, mais sans effet : la guilde a son fil Discord séparé."] = "Discord con chat combinado: activado, pero sin efecto: la hermandad tiene su chat de Discord separado.",
+    ["Discord en chat fusionné : activé. Tes appels s'écrivent aussi dans le chat de guilde, les « J'arrive » suivent."] = "Discord con chat combinado: activado. Tus llamadas también se escriben en el chat de hermandad, y «Voy» las sigue.",
+    ["Discord : relié."] = "Discord: vinculado.",
+    ["Discord : non relié. Le maître de guilde ou un officier relie la guilde et coche la case qui sépare le chat Discord (Guilde et communautés, clic droit sur la guilde). Guilde en chat fusionné : /wpp fusion on."] = "Discord: sin vincular. Quien lidera la hermandad o un oficial la vincula y marca la casilla que separa el chat de Discord (Hermandad y comunidades, clic derecho en la hermandad). Hermandad con chat combinado: /wpp fusion on.",
+    ["où en est le lien avec Discord"] = "cómo va el vínculo con Discord",
+    ["guilde en chat fusionné : l'appel passe par le chat de guilde"] = "hermandad con chat combinado: la llamada pasa por el chat de hermandad",
 }
 for k, v in pairs(T) do NS.L[k] = v end

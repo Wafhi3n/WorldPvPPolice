@@ -38,6 +38,7 @@ function CallerFrame:Build()
     f:SetPoint("TOP", AF:Pile(), "TOP")
     f.title = AF.Text(f, "GameFontNormal", nil, -18)
     f.status = AF.Text(f, "GameFontHighlightSmall", f.title, -4)
+    f.why = NS.Discord.AttachWhy(f, f.status)
     f.enRoute = AF.Text(f, "GameFontHighlightSmall", f.status, -2)
     f.box = buildMessageBox(f)
     f.update = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -66,8 +67,10 @@ end
 local function discordState(a)
     if a.pending then return L["Discord : envoi en cours"] end
     local line = NS.Call:CurrentLine(a)
-    if a.discordSig and (not line or a.discordSig == line) then return L["Discord : envoyé"] end
-    if not NS.Discord.Stream() then return L["Discord : non relié"] end
+    if a.discordSig and (not line or a.discordSig == line) then
+        return a.viaChat and L["Discord : par le chat de guilde"] or L["Discord : envoyé"]
+    end
+    if not (a.fusion or NS.Discord.Stream()) then return L["Discord : non relié"] end
     local wait = NS.Call:DiscordWait(a)
     if wait > 0 then return string.format(L["Discord : dans %d s"], wait) end
     return a.discordSig and L["Discord : pas à jour"] or L["Discord : pas envoyé"]

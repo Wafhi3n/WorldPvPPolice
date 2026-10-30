@@ -90,6 +90,7 @@ function Panel:Build()
     f.discord:SetPoint("BOTTOM", 0, 14)
     f.discord:SetWidth(WIDTH - 24)
     f.discord:SetWordWrap(false)   -- le compte rendu tient sur une ligne, sous la case (coupé au pire)
+    f.why = NS.Discord.AttachWhy(f, f.discord)
     -- « Ton appel » cache sa case tant que l'encart est là (une seule case à l'écran) : il suit tout de
     -- suite, sans attendre son passage d'une seconde.
     local function followCaller() if NS.CallerFrame then NS.CallerFrame:Update() end end
@@ -128,6 +129,8 @@ function Panel:Refresh(state)
         f.discord:SetText(self.status)
     elseif NS.Discord.Stream() then
         f.discord:SetText(L["Discord : relié"])
+    elseif NS.Discord.FusionOn() then
+        f.discord:SetText(L["Discord : par le chat de guilde"])
     else
         f.discord:SetText(L["Discord : non relié (appel en jeu seulement)"])
     end
@@ -135,6 +138,7 @@ end
 
 local function discordText(r)
     if r.discord == "later" then return string.format(L["Discord : dans %d s"], r.wait or 0) end
+    if r.discord == "chat" or r.discord == "chatsame" then return L["Discord : par le chat de guilde"] end
     if r.discord == "pending" then return L["Discord : envoi en cours"] end
     if r.discord == "sent" or r.discord == "same" then return L["Discord : envoyé"] end
     if r.discord == "noecho" then return L["Discord : pas de retour"] end

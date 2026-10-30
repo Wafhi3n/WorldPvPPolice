@@ -1,9 +1,9 @@
 # Un appel sans pont entre le jeu et Discord
 
-> État : **validée en partie** · 2026-10-29 · Demande du user (« penser à créer une spec si on n'a pas de
-> liaison de données entre WoW et Discord ») ; options de l'agent, **tranchées par le user le même jour**
-> (S1 à S4) ; une question reste ouverte (Q5). Rien n'est codé. La spec de l'appel lui-même reste
-> `appel-a-l-aide.md`.
+> État : **validée** · 2026-10-30 · Demande du user (« penser à créer une spec si on n'a pas de
+> liaison de données entre WoW et Discord ») ; options de l'agent, **tranchées par le user** (S1 à S5).
+> O1 et O3 codées, jamais vues en jeu (M12 à faire) ; O2 attend M4 et M13. La spec de l'appel lui-même
+> reste `appel-a-l-aide.md`.
 
 ## Le problème
 
@@ -65,7 +65,7 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
   guilde arrive lisible sur Discord en flux mêlé.
   - Le prix : une ligne visible par toute la guilde à chaque appel. Dans une guilde non reliée (a), ce
     n'est que du bruit en double de l'alerte, et l'addon ne sait pas distinguer (a) de (b).
-  - Donc **seulement sur demande du joueur** (`/wpp chatguilde on`, éteint par défaut), avec la même
+  - Donc **seulement sur demande du joueur** (`/wpp fusion on`, éteint par défaut), avec la même
     limite qu'aujourd'hui sur Discord : une mise à jour toutes les 2 minutes au plus.
   - **Recommandée comme option** pour les guildes qui ont choisi le flux mêlé ; à mesurer d'abord (M12).
 - **O4 — Hors du jeu** (une appli sur le PC qui lit le journal de chat et poste sur un webhook) :
@@ -138,18 +138,12 @@ Discord (le serveur de test du user).
 - **S4** (user, 2026-10-29, « pas d'appli hors jeu, on doit juste avoir une liaison WoW > Discord, le
   bot récupère la data sur Discord ») — **Un seul chemin : le pont du jeu vers Discord**, puis le bot
   qui lit Discord. O4 écartée pour de bon ; rien ne repasse de Discord vers le jeu.
-
-## Question ouverte
-
-- **Q5 — Qui allume « Discord en chat fusionné » ?** L'option ne fait une carte complète que si les
-  `J'arrive` et `C'est réglé` passent eux aussi par le chat de guilde.
-  - (a) **Chaque joueur** l'allume pour lui (`/wpp fusion on`). Simple, mais un répondant qui ne l'a pas
-    allumée n'apparaît pas « en route » sur la carte.
-  - (b) **Elle suit l'appel** : l'appelant l'a allumée, son message d'addon le dit, et le `J'arrive` de
-    chaque guildien prend le même chemin. Une seule personne à régler par appel, mais le message d'addon
-    gagne un champ (contrat de `appel-a-l-aide.md`, à versionner).
-  - Proposition de l'agent : (b), parce que dans une guilde en flux mêlé, c'est souvent un seul
-    officier qui saura qu'il faut l'allumer.
+- **S5** (user, 2026-10-30, « oui suivre l'appel », ex-Q5) — **L'option suit l'appel** : l'appelant l'a
+  allumée, son message d'addon le dit (11e champ `F`, `appel-a-l-aide.md`, « Contrat »), et le `J'arrive`
+  de chaque guildien prend le même chemin. Une seule personne à régler par appel : dans une guilde en
+  flux mêlé, c'est souvent un seul officier qui saura qu'il faut l'allumer. Le drapeau ne part que si
+  l'option est allumée ET que l'appelant ne voit pas le fil séparé ; un répondant qui voit le fil
+  l'emploie, drapeau ou non.
 
 ## Critères d'acceptation (des options retenues)
 
@@ -180,8 +174,10 @@ Discord (le serveur de test du user).
 
 ## Plan (2026-10-29) — volatile, meurt quand c'est fait
 
-- **T1** (addon + tests de l'outillage) — O1 : l'infobulle et `/wpp discord`. Aucune mesure préalable.
-- **T2** (addon + tests de l'outillage) — O3 selon Q5 : l'option, la route par le chat de guilde, le
-  compte rendu « par le chat de guilde ». Puis M12 au banc, sur le serveur de test en flux mêlé.
+- **T1** — CODÉ le 2026-10-30 (`feat/wpp-sans-pont`, addon + outillage, `tests/test_wpp_sans_pont.lua`) :
+  O1, l'infobulle et `/wpp discord`.
+- **T2** — CODÉ le 2026-10-30 (même branche) : O3 selon S5, `/wpp fusion`, la route par le chat de guilde
+  (`C_ChatInfo.SendChatMessage`), le compte rendu « par le chat de guilde ». Reste M12 au banc, sur le
+  serveur de test en flux mêlé.
 - **T3** (bot) — En `repondre`, ne noter que les lignes d'appel (critère 6).
 - **T4** (addon) — O2, seulement après M4 (un guildien sans Discord : un testeur extérieur) et M13.

@@ -72,7 +72,7 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
 - **Pas de royaume affiché** (règle du user) : les noms s'écrivent sans royaume.
 - **Pas de liste d'ennemis** (KOS), pas de suivi des tueurs entre les appels.
 - **Pas de relais par un autre guildien** pour un joueur sans Discord relié : on attend la mesure M4
-  avant de décider s'il en faut un. Options et cas : `appel-sans-pont-discord.md` (O2, brouillon).
+  avant de décider s'il en faut un. Options et cas : `appel-sans-pont-discord.md` (O2, S2).
 
 ## Cas particuliers
 
@@ -121,8 +121,8 @@ proche, envoie un message à la guilde, sans réponse ni Discord, et vise Classi
   est ignorée : au pire, le geste suivant en envoie une deuxième.
 - **Guilde non reliée à Discord, ou en flux mêlé** : l'appel part en jeu seulement ; l'encart le dit
   discrètement (« Discord : non relié »). En flux mêlé, l'addon ne peut pas savoir que la guilde est
-  reliée (mesuré) : on traite comme non relié. Ce qu'on pourrait faire de plus (expliquer, relayer,
-  passer par le chat de guilde en flux mêlé) : `appel-sans-pont-discord.md`, brouillon à trancher.
+  reliée (mesuré) : on traite comme non relié. L'infobulle et `/wpp discord` disent pourquoi ; l'option
+  `/wpp fusion on` fait passer l'appel par le chat de guilde (`appel-sans-pont-discord.md`, O1, O3, S5).
 - **Pas de guilde** : pas d'encart.
 - **Morts répétées** : pendant un appel en cours (D11), chaque mort par un joueur (l'encart s'ouvre)
   augmente le compteur ; rien ne part à la mort elle-même, la mise à jour part au geste suivant
@@ -446,11 +446,15 @@ version qu'il ne connaît pas. Depuis D19 (2026-10-28), le même `SOS` peut auss
 guilde, et n'accepte ni `OMW` ni `END` chuchotés. Champs séparés par une tabulation, texte libre privé de tabulations et
 de `|`, 255 octets au plus.
 
-- `1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>` — appel ou mise à jour
+- `1 SOS <n> <uiMapID> <x|-> <y|-> <morts> <tueurs|-> <CLASSES|-> <message>[ F]` — appel ou mise à jour
 - `1 OMW <n> <Perso appelant>` — j'arrive (l'émetteur est le répondant)
 - `1 END <n>` — réglé (l'émetteur est l'appelant)
 
-Nombre de champs exact par sorte (10, 4, 3) : un message décalé est refusé, pas relu de travers.
+Nombre de champs exact par sorte (10, 4, 3) : un message décalé est refusé, pas relu de travers. Seule
+exception, le 2026-10-30, avant toute release : un 11e champ de `SOS`, exactement `F`, dit que l'appel
+passe par le chat de guilde et que les `J'arrive` le suivent (S5 de `appel-sans-pont-discord.md`) ; sans
+lui, un `SOS` ne change pas d'un octet. Le message garde la place de ce champ dans les 255 octets. Une
+copie d'avant ce champ ignore un `SOS` qui le porte.
 `<x>`, `<y>` : pourcentage à une décimale, comme la ligne Discord, ou `-` tous les deux (zone seule,
 D14). `<tueurs>`, `<CLASSES>` : les deux listes alignées de la ligne Discord (`Xyz,Abc,Def`,
 `ROGUE,MAGE,-`), `-` pour une liste vide ; des tueurs sans aucune classe connue = `-` en `<CLASSES>`.
@@ -463,7 +467,8 @@ une ligne. Nom du fil : mots séparés d'une espace, ni blanc au bord, ni tabula
 ### Données sauvegardées
 
 `WorldPvPPoliceDB` : `nextCall` (prochain numéro d'appel, par personnage : clé = GUID du perso,
-consommé seulement quand un appel part), `alerts` (on/off, compte ; `/wpp on|off`), `pile` (position
+consommé seulement quand un appel part), `alerts` (on/off, compte ; `/wpp on|off`), `fusion` (« Discord
+en chat fusionné », éteint par défaut, compte ; `/wpp fusion on|off`), `pile` (position
 de la pile des fenêtres, compte : `{ point, point relatif, x, y }`, absente = position par défaut).
 Depuis D17 (2026-10-28), par personnage (clé = GUID) : `calls` (MON appel en cours, la table même de
 `NS.Call.active` : `n`, `serial`, `deaths`, `snap`, `killers`, `msg`, `sentAt` et `discordAt` en

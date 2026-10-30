@@ -55,5 +55,20 @@ local T = {
     ["Discord : pas envoyé"]          = "Discord: not sent",
     ["Discord : pas à jour"]          = "Discord: not up to date",
     ["Personne en route pour l'instant"] = "Nobody on the way yet",
+    -- Sans lien avec Discord
+    ["Discord : par le chat de guilde"] = "Discord: through guild chat",
+    ["L'appel part en jeu, pas sur Discord. Il faut :"] = "The call goes out in game, not to Discord. It takes:",
+    ["- la guilde reliée à un serveur Discord ;"] = "- the guild linked to a Discord server;",
+    ["- la case qui sépare le chat Discord du chat de guilde, cochée ;"] = "- the box that separates Discord chat from guild chat, checked;",
+    ["- peut-être aussi ton compte Battle.net relié à Discord."] = "- maybe also your Battle.net account linked to Discord.",
+    ["Le maître de guilde ou un officier s'en charge : Guilde et communautés (J), clic droit sur la guilde, ses réglages Discord."] = "The guild leader or an officer does this: Guild & Communities (J), right-click the guild, its Discord settings.",
+    ["Guilde en chat fusionné : /wpp fusion on."] = "Guild with merged chat: /wpp fusion on.",
+    ["Discord en chat fusionné : désactivé."] = "Discord with merged chat: off.",
+    ["Discord en chat fusionné : activé, mais sans effet : la guilde a son fil Discord séparé."] = "Discord with merged chat: on, but it does nothing: the guild has its separate Discord chat.",
+    ["Discord en chat fusionné : activé. Tes appels s'écrivent aussi dans le chat de guilde, les « J'arrive » suivent."] = "Discord with merged chat: on. Your calls are also written to guild chat, and “On my way” follows.",
+    ["Discord : relié."] = "Discord: linked.",
+    ["Discord : non relié. Le maître de guilde ou un officier relie la guilde et coche la case qui sépare le chat Discord (Guilde et communautés, clic droit sur la guilde). Guilde en chat fusionné : /wpp fusion on."] = "Discord: not linked. The guild leader or an officer links the guild and checks the box that separates Discord chat (Guild & Communities, right-click the guild). Guild with merged chat: /wpp fusion on.",
+    ["où en est le lien avec Discord"] = "where the link with Discord stands",
+    ["guilde en chat fusionné : l'appel passe par le chat de guilde"] = "guild with merged chat: the call goes through guild chat",
 }
 for k, v in pairs(T) do NS.L[k] = v end

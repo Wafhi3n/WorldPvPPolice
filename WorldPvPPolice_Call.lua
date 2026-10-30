@@ -176,7 +176,14 @@ end
 local function fields(a, me)
     local s = a.snap
     return { who = me, n = a.n, map = s.map, zone = s.zone, x = s.x, y = s.y, deaths = count(a.deaths),
-             killers = a.killers, msg = a.msg }
+             killers = a.killers, msg = a.msg, fusion = a.fusion }
+end
+
+-- L'option « Discord en chat fusionné » allumée, sans fil séparé (avec le fil, elle n'a pas d'effet).
+local function viaGuildChat(p)
+    if call(p.fusion) ~= true then return nil end
+    if call(p.stream) then return nil end
+    return true
 end
 
 -- ===== Les deux sorties =====
@@ -198,7 +205,7 @@ end
 function Call:ToDiscord(a, c, gesture)
     local p = self.probe
     local club, stream = call(p.stream)
-    if not club then return "none" end
+    if not club then return self:ToGuildChat(a, c, gesture) end
     local line = Line.BuildSOS(c)
     if not line then return "failed" end
     if a.discordSig == line then return "same" end
@@ -215,6 +222,24 @@ function Call:ToDiscord(a, c, gesture)
     return "pending"
 end
 
+-- O3 (S3, S5) : sans fil séparé et l'option allumée, la même ligne dans le chat de guilde, sur un geste,
+-- même rythme, jamais en instance. Aucun retour à attendre : « chat » dit qu'elle est partie, pas qu'elle
+-- a atteint Discord (une guilde pas reliée du tout ne fait que la voir passer).
+function Call:ToGuildChat(a, c, gesture)
+    if not a.fusion then return "none" end
+    local p = self.probe
+    local line = Line.BuildSOS(c)
+    if not line then return "failed" end
+    if a.discordSig == line then return "chatsame" end
+    local inst = call(p.inInstance)
+    if not gesture or (readable(inst) and inst == true) then return "nogesture" end
+    local wait = self:DiscordWait(a)
+    if wait > 0 then return "later", wait end
+    if not pcall(p.sendChat, line) then return "failed" end
+    a.discordAt, a.discordSig, a.viaChat = now(p), line, true
+    return "chat"
+end
+
 -- Secondes avant que la ligne suivante de cet appel puisse partir sur Discord (0 = dès le geste).
 function Call:DiscordWait(a)
     if not a.discordAt then return 0 end
@@ -229,15 +254,16 @@ function Call:CurrentLine(a)
 end
 
 -- L'appel tel qu'il est, à la guilde puis, sur un geste, au fil Discord. Rend (compte rendu, parti ?) :
--- parti = la guilde l'a pris ou une ligne Discord attend son retour.
+-- parti = la guilde l'a pris, une ligne Discord attend son retour, ou elle est partie par le chat.
 function Call:Deliver(a, gesture)
+    a.fusion = viaGuildChat(self.probe)   -- le message d'addon le dit : les « J'arrive » suivent (S5)
     local c = fields(a, text((call(self.probe.me))))
     local payload, why = Line.EncodeSOS(c)
     if not payload then return { err = why }, false end
     local report = { n = a.n, deaths = c.deaths }
     report.guild = self:ToGuild(a, payload)
     report.discord, report.wait = self:ToDiscord(a, c, gesture)
-    return report, report.guild == "sent" or report.discord == "pending"
+    return report, report.guild == "sent" or report.discord == "pending" or report.discord == "chat"
 end
 
 -- L'appel a changé (envoi, retour de la ligne, quelqu'un en route, réglé) : la fenêtre « Ton appel »
@@ -265,7 +291,7 @@ function Call:OnEcho(line, guid)
     local mine = text((call(self.probe.guid)))
     if readable(guid) and type(guid) == "string" and guid ~= "" and guid ~= mine then return false end
     if line ~= pending.line and squash(line) ~= squash(pending.line) then return false end
-    a.discordAt, a.discordSig, a.pending = pending.at, pending.line, nil
+    a.discordAt, a.discordSig, a.pending, a.viaChat = pending.at, pending.line, nil, nil
     self:Notify("sent")
     return true
 end
@@ -286,7 +312,8 @@ end
 -- automatique, sans geste : la guilde seulement, D13). `state` = la capture faite mort (Death.last),
 -- `serial` = la mort en cours. Rend nil si rien n'est à envoyer (libérer sans message, D3), sinon un
 -- compte rendu : { n, deaths, guild = "sent"|"same"|"failed", discord = "pending"|"same"|"later"|"none"|
--- "nogesture"|"failed", wait } ou { err = "pos"|"num"|… } quand l'appel ne peut pas se construire.
+-- "nogesture"|"failed"|"chat"|"chatsame", wait } ou { err = "pos"|"num"|… } quand l'appel ne peut pas se
+-- construire.
 -- « pending » devient « sent » ou « noecho » plus tard, par Call.onDiscord(état).
 function Call:Send(msg, origin, state, serial)
     if (origin == "release" or origin == "auto") and Line.Clean(msg) == "" then return nil end
@@ -346,8 +373,9 @@ function Call:AddResponder(n, sender)
 end
 
 -- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), et le fil Discord si une ligne de cet appel
--- y est partie ou en cours (« END <moi> #SOS<n> », D12 ; sans suivi de son retour : rien n'en dépend).
--- L'appel est clos tout de suite chez nous, qu'importe ce qui part. Rend { guild, discord } ou nil.
+-- y est partie ou en cours (« END <moi> #SOS<n> », D12 ; sans suivi de son retour : rien n'en dépend),
+-- ou le chat de guilde si elle est passée par là (S5). L'appel est clos tout de suite chez nous,
+-- qu'importe ce qui part. Rend { guild, discord } ou nil.
 function Call:Settle()
     if not self:IsActive() then return nil end
     local a, p = self.active, self.probe
@@ -358,8 +386,12 @@ function Call:Settle()
     local result = payload and call(p.sendGuild, payload)
     if readable(result) and (result == 0 or result == true) then report.guild = "sent" end
     local club, stream = call(p.stream)
-    local line = (a.discordSig or a.pending) and club and Line.BuildEND(call(p.me), a.n)
-    if line then report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed" end
+    local line = (a.discordSig or a.pending) and Line.BuildEND(call(p.me), a.n)
+    if line and club then
+        report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
+    elseif line and a.viaChat then
+        report.discord = pcall(p.sendChat, line) and "chat" or "failed"
+    end
     self:Changed()
     return report
 end
@@ -374,5 +406,8 @@ Call.probe = {
     stream      = function() return NS.Discord.Stream() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
+    fusion      = function() return NS.Discord.FusionOn() end,
+    inInstance  = function() return (IsInInstance()) end,
+    sendChat    = function(line) C_ChatInfo.SendChatMessage(line, "GUILD") end,
     after       = function(seconds, fn) C_Timer.After(seconds, fn) end,
 }
