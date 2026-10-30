@@ -74,6 +74,18 @@ local function hitKind(hit)
     return "unknown"
 end
 
+-- Le nom du tueur, le plus complet possible (D22). Sur Forever, on n'a pas mesuré si le récap rend
+-- « Prénom » ou « Prénom Nom » (M14) : un récap sans nom de famille est complété par GetPlayerInfoByGUID
+-- (6e retour), seulement si ce nom commence par le même prénom. Le récap décide si le nom se montre.
+local function killerNameOf(hit, guid, playerInfo)
+    local shown = Line.KillerName(field(hit, "sourceName"))
+    if not shown then return nil end
+    local _, _, _, _, _, name = call(playerInfo, guid)
+    local full = Line.KillerName(name)
+    if full and full:find(shown .. " ", 1, true) == 1 then return full end
+    return shown
+end
+
 -- Un joueur du récap, une fois par GUID : il entre dans la liste au premier de ses coups qui montre son
 -- nom (un coup à `hideCaster`, un nom secret ne le montrent pas).
 local function notePlayer(players, byGuid, hit, guid, playerInfo)
@@ -84,7 +96,7 @@ local function notePlayer(players, byGuid, hit, guid, playerInfo)
         byGuid[guid] = p
     end
     if p.name or field(hit, "hideCaster") == true then return end
-    p.name = Line.ShortName(field(hit, "sourceName"))
+    p.name = killerNameOf(hit, guid, playerInfo)
     if p.name then players[#players + 1] = p end
 end
 
