@@ -29,7 +29,7 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
    personne en jeu.
 5. **Tant que l'appel est ouvert**, la fenêtre l'affiche (« Ton appel : tank, sur Discord depuis
    21:04 ») avec un bouton **Trouvé** qui le ferme : la carte passe en gris. Sans « Trouvé », l'appel
-   expire au bout de 30 minutes (R10).
+   expire **30 minutes après sa dernière ligne** (R10), la même horloge que le bot.
 6. **Changer le message** d'un appel ouvert met la carte à jour sans relancer la mention (R7).
 
 ## Ce qu'on NE fait PAS
@@ -64,8 +64,11 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 - **La ligne ne revient pas en jeu** : l'état dit « Discord : pas encore vu » ; elle ne compte comme
   partie qu'une fois revenue (D16 de `appel-a-l-aide.md`).
 - **`/reload` ou déco-reco** : l'appel ouvert survit, heures en `time()` (comme D17).
-- **Expiration** : l'addon montre l'appel fermé ; aucune ligne `END` ne part, faute de geste du joueur.
-  C'est le bot qui grise la carte au bout de 30 minutes.
+- **Expiration** : 30 minutes après la dernière ligne envoyée (une mise à jour relance l'horloge),
+  l'addon montre l'appel fermé ; aucune ligne `END` ne part, faute de geste du joueur. Le bot grise
+  la carte 30 minutes après la dernière ligne reçue : la même règle des deux côtés.
+- **Une mise à jour à la limite des 30 minutes** (envoyée à 29:59, reçue à 30:01) : le bot peut y voir
+  un nouvel appel et ouvrir une 2e carte. Elle ne sonne pas (B5 du bot), et la 1re expire seule.
 - **Message trop long** : coupé sans casser un caractère, comme le SOS (255 octets la ligne).
 - **Nom illisible ou réservé** : pas d'appel, et l'infobulle le dit. Cas rare.
 - **Deux personnages du même nom complet** : la clé est `Nom + n`, collision acceptée.
@@ -80,13 +83,17 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 - **R1** (user, 2026-11-03) : c'est dans **World PvP Police**, addon et bot. `pvp-police` devient un
   mercenaire parmi d'autres.
 - **R2** (user) : deux rôles, **`tank-mercenaire`** et **`heal-mercenaire`**. Pas de DPS. Les rôles se
-  prennent dans « Salons et rôles » du Discord, comme `pvp-police`.
+  prennent dans « Salons et rôles » du Discord, comme `pvp-police`. Leurs noms exacts sur le serveur
+  restent à confirmer par le user : le bot les cherche par nom (B3 du bot).
 - **R3** (user) : **notre fenêtre + `/wpp tank|heal`**. Rien n'est greffé dans la recherche de groupe
   de Blizzard.
 - **R4** (user) : **le mercenaire chuchote l'appelant** ; pas d'alerte en jeu.
 - **R5** (agent, à confirmer) : une ligne **`LFM`** qui porte le **nom complet** (`Prénom_Nom`, comme
   les tueurs de D22) et la zone de l'appelant. Le mercenaire doit pouvoir chuchoter, et le prénom
-  seul, celui des lignes SOS, ne suffit pas sur Forever. « LFM » se comprend aussi sans le bot.
+  seul, celui des lignes SOS, ne suffit pas sur Forever. « LFM » se comprend aussi sans le bot. Le nom
+  complet est lisible : `GetUnitName("player", true)` rend « Prénom Nom » sur Forever (mesuré le
+  2026-09-27, skill `wow-forever-api`, chat-channels-and-communities.md), et un chuchotement au nom
+  complet atteint le bon personnage (même source).
 - **R6** (agent, à confirmer) : on ouvre la fenêtre par `/wpp tank|heal|merc` et par une entrée dans
   le menu des addons de la minicarte (`## AddonCompartmentFunc`, déjà vu en jeu avec LeyLines). Pas de
   bouton de minicarte en plus.
@@ -94,15 +101,17 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 - **R8** (agent, à confirmer) : un seul appel ouvert par personnage ; changer de rôles = fermer et
   rouvrir.
 - **R9** (agent, à confirmer) : permis en instance et en groupe, grisé en combat.
-- **R10** (agent, à confirmer) : un appel vit 30 minutes, comme un SOS (D11).
+- **R10** (agent, à confirmer) : un appel vit 30 minutes après sa dernière ligne, comme un SOS (D11),
+  et le bot compte de la même façon.
 - **R11** (agent, à confirmer) : sans pont, aucun repli vers un autre canal.
 
 ## Mesures à faire (Forever, à partir du 2026-11-04)
 
-- **MR1, chuchoter un « Prénom Nom »** : quelle commande marche (`/w Prénom Nom`, des guillemets, le
-  prénom seul ?). C'est ce qui décide la ligne « Pour répondre » de la carte. Témoin : clic droit sur
-  un guildien dans la liste de guilde, « Chuchoter », puis lire ce que le jeu écrit dans la case de
-  saisie.
+- **MR1, taper `/w Prénom Nom message`** : est-ce que ça part au bon personnage ? Le code de Blizzard
+  le prévoit (`ExtractTellTarget`, `Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua` : « Prénom Nom »
+  et « Prénom-Nom » quand les noms uniques par région sont actifs), mais on ne l'a jamais tapé. C'est ce
+  qui décide la ligne « Pour répondre » de la carte. Témoin : clic droit sur un guildien dans la liste
+  de guilde, « Chuchoter », puis lire ce que le jeu écrit dans la case de saisie.
 - **MR2, le fil Discord depuis un donjon**, hors combat : la ligne revient-elle en jeu (D16) ?
 - **MR3, en combat ordinaire** (hors boss) : l'envoi au fil Discord passe-t-il ? Si oui, R9 peut
   s'assouplir.
@@ -115,8 +124,9 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
    non plus. → même fichier
 3. [test] Sans fil Discord et sans fusion, Appeler n'envoie rien. Avec la fusion, la ligne part dans
    le chat de guilde. → même fichier, sur le vrai module devant un jeu factice
-4. [test] Changer le message d'un appel ouvert garde le numéro ; changer les rôles envoie `END` puis
-   un nouveau numéro ; un `/reload` rend l'appel ouvert. → même fichier
+4. [test] Changer le message d'un appel ouvert garde le numéro et relance les 30 minutes ; changer
+   les rôles envoie `END` puis un nouveau numéro ; un `/reload` rend l'appel ouvert ; 30 minutes après
+   la dernière ligne, l'appel est fermé. → même fichier
 5. [test] Aucune ligne dans le chat hors d'une réponse à `/wpp`, comptée comme le demande le skill
    `chat-output`.
 6. [check] Les quatre portes, dont la locale : tout le texte de la fenêtre est en FR, avec ses
@@ -154,8 +164,9 @@ END <Nom> #LFM<n>
 - `<message>` : les mêmes garanties que le message d'un SOS (ni `# | [ ]`, ni caractère de contrôle).
 - Ni coordonnées ni carte : la carte du bot n'a pas d'image.
 - 255 octets au plus ; le message est coupé sans casser un caractère UTF-8.
-- Un `LFM` dont le `#LFM<n>` a déjà été vu il y a moins de 30 minutes, avec les mêmes rôles, met cet
-  appel à jour.
+- Un `LFM` dont le `#LFM<n>` a eu sa **dernière ligne** il y a moins de 30 minutes met cet appel à
+  jour. Au-delà, c'est un nouvel appel. L'addon ne change jamais les rôles sous le même numéro (R8) ;
+  si un lecteur le voit quand même, il prend les rôles de la nouvelle ligne.
 
 Exemples :
 
@@ -167,7 +178,8 @@ END Gnomi_Ombrelune #LFM4
 
 ### Données sauvegardées
 
-`WorldPvPPoliceDB.merc = { n = <dernier numéro>, open = { n, roles, msg, sentAt, seenAt } | nil }`.
+`WorldPvPPoliceDB.merc = { n = <dernier numéro>, open = { n, roles, msg, lastAt, seenAt } | nil }`
+(`lastAt` : la dernière ligne envoyée, en `time()`, d'où part l'expiration).
 On peut l'effacer : un numéro repart de 1, et une nouvelle carte se crée (aucune ne date de moins de
 30 minutes sous ce numéro).
 
