@@ -1,7 +1,8 @@
 # Appeler un mercenaire (tank, soigneur) sur Discord
 
 > État : **brouillon** · Idée du user le 2026-11-03 (« en jeu, quand on recherche un groupe, on peut appeler
-> un tank sur le Discord ») ; R1 à R4 tranchées par le user le même jour ; R5 à R11 proposées par l'agent,
+> un tank sur le Discord ») ; R1 à R4 tranchées par le user le même jour, puis les noms des rôles, le
+> salon à part et le widget près de la recherche de groupe (R6) ; R5 et R7 à R11 proposées par l'agent,
 > **à confirmer**. Rien de codé, rien de mesuré. Le bot qui lit la ligne a sa propre spec :
 > `F:\WorldPvPPoliceBot\docs\specs\mercenaires.md` (même branche `docs/spec-mercenaires`).
 
@@ -12,19 +13,20 @@ le chat de guilde ne touchent que les joueurs connectés. Or les guildiens qui v
 soigner s'ils savaient qu'on cherche quelqu'un sont souvent ailleurs : sur Discord, sur leur
 téléphone, dans un autre jeu. Sur le Discord de la guilde, ceux qui acceptent d'être appelés prennent
 un rôle de **mercenaire** dans « Salons et rôles », comme `pvp-police` pour les appels PvP. Aujourd'hui,
-rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-mercenaire` à la main.
+rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@Tank Mercenaire` à la main.
 
 ## Ce qu'on veut
 
 1. **Une petite fenêtre « Appeler un mercenaire »**, à nous : deux cases **Tank** et **Soigneur**
    (au moins une cochée), une case de message (« Profondeurs de Rochenoire, on est 4 à l'entrée ») et
-   un bouton **Appeler**. Elle s'ouvre par `/wpp tank` ou `/wpp heal` (la case est déjà cochée), par
-   `/wpp merc`, et par l'entrée de l'addon dans le menu des addons de la minicarte (R6).
+   un bouton **Appeler**. **Elle apparaît d'elle-même, collée au bord de la fenêtre de recherche de
+   groupe** quand on l'ouvre, et disparaît quand on la ferme (R6). Elle s'ouvre aussi par `/wpp tank`
+   ou `/wpp heal` (la case est déjà cochée) et par `/wpp merc`.
 2. **L'appel part au clic**, ou à Entrée dans la case : une ligne dans le fil Discord de la guilde,
    par le même chemin que le SOS (option `/wpp fusion` comprise). Elle porte le nom complet de
    l'appelant, les rôles cherchés, la zone où il se trouve (le donjon s'il y est déjà) et le message.
-3. **Sur Discord**, le bot en fait une carte dans un salon dédié et mentionne `@tank-mercenaire`,
-   `@heal-mercenaire`, ou les deux. La carte dit qui chuchoter en jeu.
+3. **Sur Discord**, le bot en fait une carte dans un salon dédié et mentionne `@Tank Mercenaire`,
+   `@Heal Mercenaire`, ou les deux. La carte dit qui chuchoter en jeu.
 4. **Le mercenaire répond en chuchotant l'appelant** (R4). L'addon n'invite personne et n'alerte
    personne en jeu.
 5. **Tant que l'appel est ouvert**, la fenêtre l'affiche (« Ton appel : tank, sur Discord depuis
@@ -34,9 +36,12 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 
 ## Ce qu'on NE fait PAS
 
-- **Rien dans la recherche de groupe de Blizzard** (R3) : pas de bouton greffé, pas de lecture de
-  l'annonce (activité, places libres). Le taint LFG imputé à COC n'est toujours pas résolu, et lire
-  l'annonce par `C_LFGList` sur Forever n'a jamais été mesuré. Au mieux une v2, après mesure.
+- **Rien n'est écrit DANS la recherche de groupe de Blizzard** (R3, R6) : notre fenêtre se pose à
+  côté, et elle ne touche ni à la fenêtre de Blizzard ni à ses tables ou à ses fonctions (aucun
+  `SetParent`, `SetPoint` ou `HookScript` sur elle, aucun `hooksecurefunc` dans son code). Pas de
+  lecture de l'annonce non plus (activité, places libres) : le taint LFG imputé à COC n'est toujours
+  pas résolu, et lire l'annonce par `C_LFGList` sur Forever n'a jamais été mesuré. Au mieux une v2,
+  après mesure.
 - **Pas d'alerte en jeu** pour les guildiens (R4) : pas de message d'addon, pas de « J'arrive », pas
   de point de route.
 - **Pas d'invitation automatique.**
@@ -82,9 +87,9 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 
 - **R1** (user, 2026-11-03) : c'est dans **World PvP Police**, addon et bot. `pvp-police` devient un
   mercenaire parmi d'autres.
-- **R2** (user) : deux rôles, **`tank-mercenaire`** et **`heal-mercenaire`**. Pas de DPS. Les rôles se
-  prennent dans « Salons et rôles » du Discord, comme `pvp-police`. Leurs noms exacts sur le serveur
-  restent à confirmer par le user : le bot les cherche par nom (B3 du bot).
+- **R2** (user) : deux rôles, nommés exactement **`Tank Mercenaire`** et **`Heal Mercenaire`** sur le
+  serveur (noms donnés par le user le 2026-11-03). Pas de DPS. Les rôles se prennent dans « Salons et
+  rôles » du Discord, comme `pvp-police` ; le bot les cherche par leur nom, casse ignorée (B3 du bot).
 - **R3** (user) : **notre fenêtre + `/wpp tank|heal`**. Rien n'est greffé dans la recherche de groupe
   de Blizzard.
 - **R4** (user) : **le mercenaire chuchote l'appelant** ; pas d'alerte en jeu.
@@ -94,9 +99,19 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
   complet est lisible : `GetUnitName("player", true)` rend « Prénom Nom » sur Forever (mesuré le
   2026-09-27, skill `wow-forever-api`, chat-channels-and-communities.md), et un chuchotement au nom
   complet atteint le bon personnage (même source).
-- **R6** (agent, à confirmer) : on ouvre la fenêtre par `/wpp tank|heal|merc` et par une entrée dans
-  le menu des addons de la minicarte (`## AddonCompartmentFunc`, déjà vu en jeu avec LeyLines). Pas de
-  bouton de minicarte en plus.
+- **R6** (user, 2026-11-03, « quand on ouvre l'interface de recherche de groupe un widget apparaît ?
+  c'est possible sans taint l'UI ? ») : **notre fenêtre apparaît collée au bord de la recherche de
+  groupe** quand elle s'ouvre, et part avec elle ; on garde `/wpp tank|heal|merc`. Pas d'entrée dans
+  le menu des addons. La méthode, proposée par l'agent, est la seule mesurée sans taint sur Forever (le
+  2026-09-19, sur la fenêtre des métiers ; skill `wow-forever-api`, taint-and-protected-frames.md) :
+  notre fenêtre a `UIParent` pour parent, s'ancre par `SetPoint` sur le bord de `LFGParentFrame`, et
+  rien n'est écrit dans la fenêtre de Blizzard. Pour savoir qu'elle s'ouvre, on lit
+  `LFGParentFrame:IsShown()` quelques fois par seconde, sans `HookScript` ni `hooksecurefunc` : la
+  recherche de groupe charge à la demande (`Blizzard_GroupFinder_VanillaStyle`, `## Secure: 1`), et sa
+  recherche automatique (`C_LFGList.Search` sans clic) est le chemin même du taint LFG encore ouvert.
+  On n'y touche pas, même par un crochet réputé sûr. Ce n'est mesuré que sur la fenêtre des métiers :
+  MR4 doit le confirmer sur la recherche de groupe avant toute release. Si MR4 est KO, on retire le
+  widget et il reste le slash.
 - **R7** (agent, à confirmer) : une seule mention par appel ; une mise à jour ne relance pas la mention.
 - **R8** (agent, à confirmer) : un seul appel ouvert par personnage ; changer de rôles = fermer et
   rouvrir.
@@ -115,6 +130,13 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 - **MR2, le fil Discord depuis un donjon**, hors combat : la ligne revient-elle en jeu (D16) ?
 - **MR3, en combat ordinaire** (hors boss) : l'envoi au fil Discord passe-t-il ? Si oui, R9 peut
   s'assouplir.
+- **MR4, le widget ne teinte pas la recherche de groupe** : `/console taintLog 1`, puis on ouvre et
+  on ferme la recherche de groupe, on crée une annonce, on la modifie, on rejoint le groupe d'un autre
+  compte (c'est ce chemin, `LFG_LIST_ACTIVE_ENTRY_UPDATE` → `C_LFGList.Search`, que vise le bug ouvert),
+  le tout aussi en combat. On attend : aucun `ADDON_ACTION_BLOCKED`, et rien qui nomme WorldPvPPolice
+  dans `Logs/taint.log`. Témoin : le même parcours, addon désactivé. Attention : au niveau 1, le
+  journal n'écrit qu'au moment d'un blocage (vu au banc PTR du 2026-10-28), donc un journal vide reste
+  une preuve faible ; le niveau 2, plus bavard, si le temps le permet.
 
 ## Critères d'acceptation
 
@@ -132,11 +154,14 @@ rien ne relie le jeu à ces rôles : il faut sortir du jeu et taper `@tank-merce
 6. [check] Les quatre portes, dont la locale : tout le texte de la fenêtre est en FR, avec ses
    overlays en/de/es.
 7. [human] Forever, compte A dans une guilde reliée : `/wpp tank`, un message, Appeler. L'état passe
-   à « sur Discord », la carte arrive dans le salon des mercenaires avec `@tank-mercenaire`, et le
+   à « sur Discord », la carte arrive dans le salon des mercenaires avec `@Tank Mercenaire`, et le
    téléphone d'un porteur du rôle sonne. Témoin : une carte SOS le même jour (même pont, même bot).
    Observateur : le user.
 8. [human] Le compte B chuchote ce que la carte indique, et A reçoit le chuchotement (MR1).
    Observateur : le user, sur les deux comptes.
+8 bis. [human] On ouvre la recherche de groupe : notre fenêtre apparaît collée à son bord, elle suit
+   la fenêtre quand on la déplace et part quand on la ferme. Le parcours de MR4 ne bloque rien.
+   Témoin : le même parcours, addon désactivé. Observateur : le user.
 9. [human] Sur A, « Trouvé » : la carte passe en gris en moins d'une minute. Témoin : le `END` d'un
    SOS. Observateur : le user.
 10. [agent] `api-gotcha-reviewer` : rien n'est écrit dans une fenêtre de Blizzard, et rien ne part
@@ -191,7 +216,7 @@ On peut l'effacer : un numéro repart de 1, et une nouvelle carte se crée (aucu
 - Le bot : `F:\WorldPvPPoliceBot\docs\specs\mercenaires.md`.
 - Skills : `wow-addon-dev:wow-forever-api` (chat et communautés, valeurs secrètes),
   `wow-addon-dev:chat-output`.
-- GuildManagerBot compte ses rôles `TANK` et `HEAL` par leur nom exact : `tank-mercenaire` ne gonfle
+- GuildManagerBot compte ses rôles `TANK` et `HEAL` par leur nom exact : `Tank Mercenaire` ne gonfle
   pas le #roster (lu dans `bot/roster.py` le 2026-11-03).
 
 ## Plan (2026-11-03) : provisoire, à supprimer une fois fait
@@ -199,7 +224,7 @@ On peut l'effacer : un numéro repart de 1, et une nouvelle carte se crée (aucu
 Rien n'entre dans `main` avant que la bascule du lancement (4/11) soit faite et vue.
 
 - **T1, addon + outillage** : `Line` sait produire et relire `LFM` et `END … #LFM`. Critères 1 et 2.
-- **T2, addon** : la fenêtre, `/wpp tank|heal|merc`, l'entrée du compartiment, l'envoi, Trouvé,
+- **T2, addon** : la fenêtre, `/wpp tank|heal|merc`, le widget collé à la recherche de groupe (R6), l'envoi, Trouvé,
   l'expiration, la persistance, les locales. Critères 3 à 6, puis 10.
 - **T3, bot** : voir sa spec (carte, salon, rôles, `/setup`, guide FR/EN, témoin dans CraftingOrderBot).
-- **Banc** : fiche `mesure--wpp-mercenaires` (MR1 à MR3, critères 7 à 9), Forever, deux comptes.
+- **Banc** : fiche `mesure--wpp-mercenaires` (MR1 à MR4, critères 7 à 9), Forever, deux comptes.
