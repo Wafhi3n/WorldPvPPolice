@@ -10,7 +10,8 @@
 -- minuteur. C_Club.SendMessage exige un geste du joueur, et le module n'a que celui-là.
 --
 -- Ce que le module peut fournir, tout facultatif ; chaque appel passe par pcall : une erreur du module
--- ne casse jamais ce qui part à la guilde.
+-- ne casse jamais ce qui part à la guilde, et elle va au gestionnaire d'erreurs du jeu (BugGrabber) :
+-- au banc, un module qui plante ne doit pas ressembler à un module absent.
 --   Fusion()               → true : le SOS porte le champ F (S5), les « J'arrive » suivent l'appel
 --   Deliver(a, c, gesture) → état, attente, parti : l'appel `a` (ses champs `c`) vient de partir à la
 --                            guilde ; « parti » = quelque chose est sorti chez le module (l'appel s'ouvre)
@@ -31,8 +32,10 @@ function NS:Plug(bridge)
 end
 
 local function returns(ok, ...)
-    if not ok then return nil end
-    return ...
+    if ok then return ... end
+    local handler = type(_G.geterrorhandler) == "function" and _G.geterrorhandler()
+    if type(handler) == "function" then pcall(handler, (...)) end
+    return nil
 end
 
 function NS.Bridged(name, ...)
