@@ -40,10 +40,23 @@ function Discord.Stream()
     return nil
 end
 
+-- Le joueur veut-il ses appels sur Discord (/wpp discord on|off, case des options ; S6 de
+-- docs/specs/appel-sans-pont-discord.md) ? Pour une guilde qui n'a pas le bot sur son Discord, ou pas de
+-- Discord : coupé, rien n'y part (fil, chat fusionné, « J'arrive », « C'est réglé ») et l'écran n'en
+-- parle plus. Stream() reste la vérité sur la GUILDE : /wpp discord le dit, coupé ou non. Seul un
+-- `false` franc coupe (le réglage du joueur, sinon le défaut) : une base pas encore lue ne coupe rien.
+function Discord.Enabled()
+    local v
+    if type(NS.db) == "table" then v = NS.db.discord end
+    if v == nil and type(NS.DEFAULTS) == "table" then v = NS.DEFAULTS.discord end
+    return v ~= false
+end
+
 -- L'option « Discord en chat fusionné » (/wpp fusion, S3 de docs/specs/appel-sans-pont-discord.md) :
 -- sans fil séparé, l'appel écrit aussi sa ligne dans le chat de guilde, que le pont mêlé porte sur Discord.
+-- Sans effet quand Discord est coupé.
 function Discord.FusionOn()
-    return type(NS.db) == "table" and NS.db.fusion == true
+    return type(NS.db) == "table" and NS.db.fusion == true and Discord.Enabled()
 end
 
 -- Pourquoi l'appel ne va pas sur Discord, et qui peut y remédier (O1, S1) : l'addon ne sait pas quelle
@@ -57,17 +70,19 @@ function Discord.WhyLines()
         L["- peut-être aussi ton compte Battle.net relié à Discord."],
         L["Le maître de guilde ou un officier s'en charge : Guilde et communautés (J), clic droit sur la guilde, ses réglages Discord."],
         L["Guilde en chat fusionné : /wpp fusion on."],
+        L["Pas de bot World PvP Police sur le Discord de la guilde ? /wpp discord off : l'appel reste en jeu, sans ce rappel."],
     }
 end
 
 -- Au survol d'un texte « Discord : … » (une chaîne de texte n'a pas de survol : un cadre par-dessus,
--- qui laisse passer les clics, donc le déplacement de la fenêtre). Rien tant que le fil existe.
+-- qui laisse passer les clics, donc le déplacement de la fenêtre). Rien tant que le fil existe, ni quand
+-- le joueur a coupé Discord (le texte est alors vide).
 function Discord.AttachWhy(parent, region)
     local hover = CreateFrame("Frame", nil, parent)
     hover:SetAllPoints(region)
     hover:SetMouseMotionEnabled(true)
     hover:SetScript("OnEnter", function(self)
-        if Discord.Stream() then return end
+        if not Discord.Enabled() or Discord.Stream() then return end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         for _, line in ipairs(Discord.WhyLines()) do GameTooltip:AddLine(line, 1, 1, 1, true) end
         GameTooltip:Show()

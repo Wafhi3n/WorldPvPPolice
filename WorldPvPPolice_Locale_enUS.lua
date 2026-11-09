@@ -68,7 +68,22 @@ local T = {
     ["Discord en chat fusionné : activé. Tes appels s'écrivent aussi dans le chat de guilde, les « J'arrive » suivent."] = "Discord with merged chat: on. Your calls are also written to guild chat, and “On my way” follows.",
     ["Discord : relié."] = "Discord: linked.",
     ["Discord : non relié. Le maître de guilde ou un officier relie la guilde et coche la case qui sépare le chat Discord (Guilde et communautés, clic droit sur la guilde). Guilde en chat fusionné : /wpp fusion on."] = "Discord: not linked. The guild leader or an officer links the guild and checks the box that separates Discord chat (Guild & Communities, right-click the guild). Guild with merged chat: /wpp fusion on.",
-    ["où en est le lien avec Discord"] = "where the link with Discord stands",
     ["guilde en chat fusionné : l'appel passe par le chat de guilde"] = "guild with merged chat: the call goes through guild chat",
+    -- Discord coupé par le joueur, et la page d'options
+    ["le lien avec Discord ; off : tes appels restent en jeu"] = "the link with Discord; off: your calls stay in game",
+    ["ouvre la page des réglages"] = "opens the settings page",
+    ["Discord : coupé, tes appels restent en jeu. Pour les écrire sur Discord : /wpp discord on."] = "Discord: off, your calls stay in game. To write them to Discord: /wpp discord on.",
+    ["Discord en chat fusionné : activé, mais sans effet : Discord est coupé (/wpp discord on)."] = "Discord with merged chat: on, but it does nothing: Discord is off (/wpp discord on).",
+    ["Pas de bot World PvP Police sur le Discord de la guilde ? /wpp discord off : l'appel reste en jeu, sans ce rappel."] = "No World PvP Police bot on the guild's Discord? /wpp discord off: the call stays in game, without this reminder.",
+    ["Réglages communs à tous les personnages du compte."] = "Settings shared by every character on the account.",
+    ["Recevoir les appels des guildiens"] = "Receive guildmates' calls",
+    ["Une fenêtre s'ouvre quand un guildien tué par un joueur appelle à l'aide. Comme /wpp on | off."] = "A window opens when a guildmate killed by a player calls for help. Same as /wpp on | off.",
+    ["Écrire les appels sur Discord"] = "Write calls to Discord",
+    ["Pour une guilde dont le Discord a le bot World PvP Police. Décoché : tes appels et tes « J'arrive » restent en jeu, rien n'est écrit sur Discord, et l'addon n'en parle plus. Comme /wpp discord on | off."] = "For a guild whose Discord has the World PvP Police bot. Unchecked: your calls and your “On my way” stay in game, nothing is written to Discord, and the addon stops mentioning it. Same as /wpp discord on | off.",
+    ["Discord en chat fusionné"] = "Discord with merged chat",
+    ["Guilde reliée à Discord sans fil séparé : l'appel s'écrit aussi dans le chat de guilde, que toute la guilde voit. Comme /wpp fusion on | off."] = "Guild linked to Discord without a separate chat: the call is also written to guild chat, which the whole guild sees. Same as /wpp fusion on | off.",
+    ["Toutes les commandes : /wpp help."] = "All commands: /wpp help.",
+    ["Les options s'ouvrent hors combat."] = "Options open out of combat only.",
+    ["La page d'options n'existe pas sur ce client."] = "The options page doesn't exist on this client.",
 }
 for k, v in pairs(T) do NS.L[k] = v end

@@ -127,6 +127,8 @@ function Panel:Refresh(state)
     f.call:SetText(NS.Call:IsActive() and L["Mettre à jour"] or L["Appeler"])
     if self.status then
         f.discord:SetText(self.status)
+    elseif not NS.Discord.Enabled() then
+        f.discord:SetText("")   -- Discord coupé par le joueur (S6) : l'encart n'en parle plus
     elseif NS.Discord.Stream() then
         f.discord:SetText(L["Discord : relié"])
     elseif NS.Discord.FusionOn() then
@@ -147,11 +149,14 @@ local function discordText(r)
 end
 
 -- Le compte rendu d'un envoi, en une ligne : « Appel n°7 · guilde : prévenue · Discord : envoyé ».
+-- Discord coupé (S6) : « Appel n°7 · guilde : prévenue », sans un mot de Discord.
 function Panel.ReportText(r)
     if r.err == "pos" then return L["Position illisible : appel impossible"] end
     if r.err then return L["Appel impossible"] end
     local guild = r.guild == "failed" and L["guilde : échec"] or L["guilde : prévenue"]
-    return string.format(L["Appel n°%d"], r.n) .. " · " .. guild .. " · " .. discordText(r)
+    local head = string.format(L["Appel n°%d"], r.n) .. " · " .. guild
+    if r.discord == "off" then return head end
+    return head .. " · " .. discordText(r)
 end
 
 -- Pendant un appel en cours, la case reprend SON message (envoyé d'ici, de « Ton appel », ou gardé

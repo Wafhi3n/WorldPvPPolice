@@ -84,9 +84,16 @@ local function fillBox(f, a)
     f.msgShown = a.msg
 end
 
+-- Discord coupé par le joueur (S6) : les morts seules, sans un mot de Discord.
+function CallerFrame.StatusText(a)
+    local deaths = string.format(L["Morts : %d"], count(a.deaths))
+    if not NS.Discord.Enabled() then return deaths end
+    return deaths .. " · " .. discordState(a)
+end
+
 local function fill(f, a)
     f.title:SetText(string.format(L["Ton appel n°%d"], a.n))
-    f.status:SetText(string.format(L["Morts : %d"], count(a.deaths)) .. " · " .. discordState(a))
+    f.status:SetText(CallerFrame.StatusText(a))
     local names = {}
     for i, r in ipairs(a.enRoute or {}) do names[i] = r.name end
     if #names > 0 then

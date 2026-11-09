@@ -2,8 +2,9 @@
 
 > État : **validée** · 2026-10-30 · Demande du user (« penser à créer une spec si on n'a pas de
 > liaison de données entre WoW et Discord ») ; options de l'agent, **tranchées par le user** (S1 à S5).
-> O1 et O3 codées, jamais vues en jeu (M12 à faire) ; O2 attend M4 et M13. La spec de l'appel lui-même
-> reste `appel-a-l-aide.md`.
+> O1 et O3 codées, jamais vues en jeu (M12 à faire) ; O2 attend M4 et M13. S6 (Discord coupé par le
+> joueur, page d'options) codée le 2026-11-09, jamais vue en jeu. La spec de l'appel lui-même reste
+> `appel-a-l-aide.md`.
 
 ## Le problème
 
@@ -144,6 +145,25 @@ Discord (le serveur de test du user).
   flux mêlé, c'est souvent un seul officier qui saura qu'il faut l'allumer. Le drapeau ne part que si
   l'option est allumée ET que l'appelant ne voit pas le fil séparé ; un répondant qui voit le fil
   l'emploie, drapeau ou non.
+- **S6** (user, 2026-11-09, « on va le publier sur CurseForge donc faudrait aussi une option sans
+  Discord pour ceux qui vont le télécharger à l'extérieur de notre guilde ») — **Discord se coupe, par
+  joueur** : `/wpp discord on|off` et une case « Écrire les appels sur Discord » dans Options > AddOns
+  (avec les cases des alertes et du chat fusionné, mêmes réglages que les commandes). Le besoin : une
+  guilde sans le bot sur son Discord, mais reliée en fil séparé, recevrait des lignes `SOS …` brutes
+  que personne ne lit. Coupé :
+  - rien ne part sur Discord, ni par le fil ni par le chat de guilde : appel, mise à jour, « J'arrive »
+    (même si l'appelant a le drapeau `F`), « C'est réglé » (même si l'appel y était parti avant ; la
+    carte du bot passe au gris d'elle-même) ; le SOS ne porte pas le drapeau `F` ;
+  - l'alerte de guilde part à l'identique, à l'octet près ;
+  - l'écran ne dit pas un mot de Discord : compte rendu de l'encart, « Ton appel », pas d'infobulle ;
+    `/wpp discord` dit seulement « coupé », `/wpp fusion` dit que l'option est sans effet.
+  - Pas de « suivre l'appel » ici (contrairement à S5) : un répondant allumé qui écrit un `OMW` pour
+    un appel coupé ne fait rien de mal, le bot ignore un `OMW`/`END` d'appel inconnu et efface la ligne
+    brute (`WorldPvPPoliceBot`, `bot/pvp.py`). Le contrat du message ne change pas.
+  - L'infobulle O1 gagne une ligne : sans le bot, `/wpp discord off`.
+  - **Défaut : allumé** (codé ainsi le 2026-11-09, lecture littérale de la demande : ceux de dehors
+    coupent). À confirmer par le user avant la première version publiée : un défaut éteint protège le
+    public, mais chaque guildien de chez nous devrait l'allumer.
 
 ## Critères d'acceptation (des options retenues)
 
@@ -162,6 +182,16 @@ Discord (le serveur de test du user).
    `#alertes-pvp`, avec qui arrive et « réglé ». Témoin : le même appel en flux séparé.
 6. [test, bot] (O3) En `repondre`, le journal du bot ne note que les lignes d'appel ; un message de chat
    ordinaire venu du jeu n'y laisse aucune trace de son texte.
+7. [test] (S6) Coupé : aucun envoi par le fil ni par le chat de guilde à l'appel, à la mise à jour, au
+   « J'arrive » et à « C'est réglé » ; pas de drapeau `F` ; le message de guilde identique à l'octet.
+   Rallumé : le geste suivant écrit sur Discord. (`tests/test_wpp_sans_discord.lua`)
+8. [test] (S6) Coupé : le compte rendu de l'encart, « Ton appel » et l'infobulle ne parlent pas de
+   Discord ; `/wpp discord` et `/wpp discord on|off` répondent en une ligne.
+9. [test] (S6) La page d'options a trois cases qui écrivent les mêmes réglages que les commandes, sans
+   ligne de chat ; le chat fusionné est grisé quand Discord est coupé ; `/wpp options` refuse en combat.
+10. [human] (S6) Sur Forever : la page est dans Options > AddOns, s'ouvre par `/wpp options`, ses cases
+    se cochent sans erreur ; Discord coupé, un appel ne laisse aucune ligne dans le salon relié et
+    l'encart ne parle pas de Discord. Témoin : le même appel allumé, sa ligne arrive.
 
 ## Renvois
 
@@ -181,3 +211,6 @@ Discord (le serveur de test du user).
   serveur de test en flux mêlé.
 - **T3** (bot) — En `repondre`, ne noter que les lignes d'appel (critère 6).
 - **T4** (addon) — O2, seulement après M4 (un guildien sans Discord : un testeur extérieur) et M13.
+- **T5** (addon) — CODÉ le 2026-11-09 (`feat/wpp-sans-discord`, addon + outillage,
+  `tests/test_wpp_sans_discord.lua`) : S6, `/wpp discord on|off`, `/wpp options`, la page d'options.
+  Reste le critère 10 en jeu, et le défaut à confirmer.

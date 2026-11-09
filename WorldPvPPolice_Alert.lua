@@ -263,18 +263,20 @@ end
 -- Prévient la guilde (l'appelant reconnaît son nom complet) et le fil Discord (D12, la ligne
 -- « OMW <moi> > <appelant> #SOS<n> », sans suivi de son retour : rien n'en dépend), ou le chat de guilde
 -- si l'appel y passe (S5 : l'appelant a l'option, il le dit dans son SOS, je n'ai rien à régler), pose un
--- point de route sur le cadavre s'il a des coordonnées (pas en zone seule, D14). Rend { guild, discord,
+-- point de route sur le cadavre s'il a des coordonnées (pas en zone seule, D14). Discord coupé chez MOI
+-- (S6) : rien sur Discord, même si l'appelant passe par le chat de guilde. Rend { guild, discord,
 -- waypoint } ou nil si l'alerte n'existe plus.
 function Alert:Respond(key)
     local a = self.list[key]
     if not a then return nil end
     local p = self.probe
-    local report = { guild = "failed", discord = "none", waypoint = false }
+    local off = call(p.discordOn) == false
+    local report = { guild = "failed", discord = off and "off" or "none", waypoint = false }
     local payload = Line.EncodeOMW(a.n, a.sender)
     local result = payload and call(p.sendGuild, payload)
     if is(result, 0) or is(result, true) then report.guild = "sent" end
     local club, stream = call(p.stream)
-    local line = Line.BuildOMW(call(p.me), a.sender, a.n)
+    local line = not off and Line.BuildOMW(call(p.me), a.sender, a.n)
     if line and club then
         report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
     elseif line and a.fusion then
@@ -310,6 +312,7 @@ Alert.probe = {
     isGuildMember = function(name) return C_GuildInfo.MemberExistsByName(name) end,
     mapName     = function(map) local info = C_Map.GetMapInfo(map); return info and info.name end,
     stream      = function() return NS.Discord.Stream() end,
+    discordOn   = function() return NS.Discord.Enabled() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
     sendChat    = function(line) C_ChatInfo.SendChatMessage(line, "GUILD") end,

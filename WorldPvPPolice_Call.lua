@@ -179,9 +179,13 @@ local function fields(a, me)
              killers = a.killers, msg = a.msg, fusion = a.fusion }
 end
 
+-- Discord coupé par le joueur (S6) : rien n'y part, ni par le fil ni par le chat de guilde. Une sonde
+-- absente ne coupe rien (seul un `false` franc le fait).
+local function discordOff(p) return call(p.discordOn) == false end
+
 -- L'option « Discord en chat fusionné » allumée, sans fil séparé (avec le fil, elle n'a pas d'effet).
 local function viaGuildChat(p)
-    if call(p.fusion) ~= true then return nil end
+    if discordOff(p) or call(p.fusion) ~= true then return nil end
     if call(p.stream) then return nil end
     return true
 end
@@ -201,9 +205,11 @@ end
 
 -- La ligne du fil Discord : seulement sur un GESTE, au plus une toutes les DISCORD_EVERY secondes pour
 -- un même appel ; une mise à jour retenue part avec le geste suivant (critère 4). Rend (état, attente) ;
--- « pending » = partie sans retour encore : OnEcho la confirme, CheckEcho la déclare perdue.
+-- « pending » = partie sans retour encore : OnEcho la confirme, CheckEcho la déclare perdue. « off » =
+-- Discord coupé par le joueur : rien n'est tenté, et l'écran n'en dit rien.
 function Call:ToDiscord(a, c, gesture)
     local p = self.probe
+    if discordOff(p) then return "off" end
     local club, stream = call(p.stream)
     if not club then return self:ToGuildChat(a, c, gesture) end
     local line = Line.BuildSOS(c)
@@ -374,19 +380,21 @@ end
 
 -- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), et le fil Discord si une ligne de cet appel
 -- y est partie ou en cours (« END <moi> #SOS<n> », D12 ; sans suivi de son retour : rien n'en dépend),
--- ou le chat de guilde si elle est passée par là (S5). L'appel est clos tout de suite chez nous,
--- qu'importe ce qui part. Rend { guild, discord } ou nil.
+-- ou le chat de guilde si elle est passée par là (S5). Discord coupé entre-temps (S6) : rien n'y part,
+-- la carte du bot passera au gris d'elle-même. L'appel est clos tout de suite chez nous, qu'importe ce
+-- qui part. Rend { guild, discord } ou nil.
 function Call:Settle()
     if not self:IsActive() then return nil end
     local a, p = self.active, self.probe
     self.active = nil
     keep(self, nil)
-    local report = { guild = "failed", discord = "none" }
+    local off = discordOff(p)
+    local report = { guild = "failed", discord = off and "off" or "none" }
     local payload = Line.EncodeEND(a.n)
     local result = payload and call(p.sendGuild, payload)
     if readable(result) and (result == 0 or result == true) then report.guild = "sent" end
     local club, stream = call(p.stream)
-    local line = (a.discordSig or a.pending) and Line.BuildEND(call(p.me), a.n)
+    local line = not off and (a.discordSig or a.pending) and Line.BuildEND(call(p.me), a.n)
     if line and club then
         report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
     elseif line and a.viaChat then
@@ -404,6 +412,7 @@ Call.probe = {
     guid        = function() return UnitGUID("player") end,
     db          = function() return NS.db end,
     stream      = function() return NS.Discord.Stream() end,
+    discordOn   = function() return NS.Discord.Enabled() end,
     sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
     fusion      = function() return NS.Discord.FusionOn() end,
