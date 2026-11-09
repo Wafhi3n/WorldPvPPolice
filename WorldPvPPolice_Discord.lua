@@ -43,8 +43,9 @@ end
 -- Le joueur veut-il ses appels sur Discord (/wpp discord on|off, case des options ; S6 de
 -- docs/specs/appel-sans-pont-discord.md) ? Pour une guilde qui n'a pas le bot sur son Discord, ou pas de
 -- Discord : coupé, rien n'y part (fil, chat fusionné, « J'arrive », « C'est réglé ») et l'écran n'en
--- parle plus. Stream() reste la vérité sur la GUILDE : /wpp discord le dit, coupé ou non. Seul un
--- `false` franc coupe (le réglage du joueur, sinon le défaut) : une base pas encore lue ne coupe rien.
+-- parle plus (/wpp discord dit seulement « coupé »). Stream() reste la vérité sur la GUILDE, que le
+-- joueur ait coupé ou non : les sorties lisent Enabled() d'abord. Seul un `false` franc coupe (le réglage
+-- du joueur, sinon le défaut) : une base pas encore lue ne coupe rien.
 function Discord.Enabled()
     local v
     if type(NS.db) == "table" then v = NS.db.discord end

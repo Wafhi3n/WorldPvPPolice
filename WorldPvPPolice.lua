@@ -33,6 +33,8 @@ function NS:SetOption(key, value)
     self.db[key] = value and true or false
     if key == "alerts" and not value and self.Alert then self.Alert:Clear() end
     if key ~= "alerts" and self.Call then self.Call:Changed() end   -- « Ton appel » montre ou cache Discord
+    local P = self.Panel   -- l'encart ouvert (mort) suit tout de suite
+    if key ~= "alerts" and P and P.frame and P.frame:IsShown() and self.Death then P:Refresh(self.Death.last) end
     if type(self.onOptionChange) == "function" then pcall(self.onOptionChange) end
 end
 
