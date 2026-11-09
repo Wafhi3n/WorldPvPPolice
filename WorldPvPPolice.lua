@@ -7,18 +7,43 @@ local ADDON, NS = ...
 local L = NS.L
 
 NS.VERSION = "0.1.0"   -- = ## Version du .toc ; scripts\bump_version.ps1 -Addon WorldPvPPolice la tient égale
+NS.TITLE = "World PvP Police Guild"   -- le nom de l'addon, jamais traduit
 _G.WorldPvPPolice = NS
 
 -- Réglages par défaut. CopyDefaults complète la base sans écraser ce que le joueur a changé ;
 -- schemaVer sert le jour où une migration de la base devient nécessaire. nextCall : prochain numéro
 -- d'appel par perso (clé = son GUID, NS.Call). alerts : recevoir les appels des guildiens (/wpp on|off,
--- pour tout le compte). fusion : « Discord en chat fusionné » (/wpp fusion on|off, pour tout le compte).
+-- pour tout le compte). Discord n'a pas de réglage ici (S7 de docs/specs/appel-sans-pont-discord.md) :
+-- c'est le module WorldPvPPoliceDiscord, installé ou non, et ses réglages vivent dans SA base.
 NS.DEFAULTS = {
     schemaVer = 1,
     nextCall = {},
     alerts = true,
-    fusion = false,
 }
+
+-- Les réglages que la page d'options (_Options.lua) et les commandes changent, par le même chemin.
+NS.OPTIONS = { alerts = true }
+
+function NS:SetOption(key, value)
+    if not NS.OPTIONS[key] then return end
+    self.db[key] = value and true or false
+    if key == "alerts" and not value and self.Alert then self.Alert:Clear() end   -- couper vide l'écran
+    self:SettingsChanged()
+end
+
+-- Un réglage a changé, ici ou dans un module : « Ton appel », l'encart ouvert (mort) et la page
+-- d'options suivent tout de suite.
+function NS:SettingsChanged()
+    if self.Call then self.Call:Changed() end
+    local P = self.Panel
+    if P and P.frame and P.frame:IsShown() and self.Death then P:Refresh(self.Death.last) end
+    if type(self.onOptionChange) == "function" then pcall(self.onOptionChange) end
+end
+
+-- Les commandes qu'un module ajoute à /wpp (NS.commands.<mot> = function(arg)) et ses lignes d'aide.
+-- Celles de la base passent avant : un module ne les remplace pas.
+NS.commands = {}
+NS.helpLines = {}
 
 local function CopyDefaults(dst, src)
     for k, v in pairs(src) do
@@ -32,7 +57,7 @@ local function CopyDefaults(dst, src)
 end
 
 function NS:Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffWorld PvP Police Guild|r " .. tostring(msg))
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ccff" .. NS.TITLE .. "|r " .. tostring(msg))
 end
 
 function NS:Printf(fmt, ...)
@@ -47,54 +72,35 @@ function NS:PrintAlertsState()
     end
 end
 
--- Le chat fusionné dit son état, et s'il sert à quelque chose : l'addon voit le fil séparé, pas le reste.
-function NS:PrintFusionState()
-    if not self.Discord.FusionOn() then
-        self:Print(L["Discord en chat fusionné : désactivé."])
-    elseif self.Discord.Stream() then
-        self:Print(L["Discord en chat fusionné : activé, mais sans effet : la guilde a son fil Discord séparé."])
-    else
-        self:Print(L["Discord en chat fusionné : activé. Tes appels s'écrivent aussi dans le chat de guilde, les « J'arrive » suivent."])
-    end
-end
-
--- /wpp discord : où en est le lien, et qui peut y remédier (O1).
-function NS:PrintDiscordState()
-    if self.Discord.Stream() then
-        self:Print(L["Discord : relié."])
-    elseif self.Discord.FusionOn() then
-        self:PrintFusionState()
-    else
-        self:Print(L["Discord : non relié. Le maître de guilde ou un officier relie la guilde et coche la case qui sépare le chat Discord (Guilde et communautés, clic droit sur la guilde). Guilde en chat fusionné : /wpp fusion on."])
-    end
-end
-
 -- Une ligne par commande (skill chat-output) : /wpp seul dit l'état des alertes, /wpp on|off le
--- change et dit le nouvel état ; /wpp fusion de même ; l'aide est la seule réponse en plusieurs lignes.
+-- change et dit le nouvel état ; les commandes d'un module suivent la même règle ; l'aide est la seule
+-- réponse en plusieurs lignes.
 function NS:Slash(msg)
     local cmd, arg = (msg or ""):match("^%s*(%S*)%s*(%S*)")
     cmd, arg = (cmd or ""):lower(), (arg or ""):lower()
     if cmd == "" then
         self:PrintAlertsState()
     elseif cmd == "on" or cmd == "off" then
-        self.db.alerts = (cmd == "on")
-        if cmd == "off" and self.Alert then self.Alert:Clear() end
+        self:SetOption("alerts", cmd == "on")
         self:PrintAlertsState()
-    elseif cmd == "discord" then
-        self:PrintDiscordState()
-    elseif cmd == "fusion" then
-        if arg == "on" or arg == "off" then self.db.fusion = (arg == "on") end
-        self:PrintFusionState()
+    elseif cmd == "options" then
+        if self.OptionsPanel then self.OptionsPanel:Open() end
     elseif cmd == "version" then
         self:Printf(L["version %s"], self.VERSION)
+    elseif cmd ~= "help" and type(self.commands[cmd]) == "function" then
+        pcall(self.commands[cmd], arg)
     else
-        self:Print(L["Commandes :"])
-        self:Print("/wpp - " .. L["état des alertes de la guilde"])
-        self:Print("/wpp on | off - " .. L["recevoir ou non les appels des guildiens"])
-        self:Print("/wpp discord - " .. L["où en est le lien avec Discord"])
-        self:Print("/wpp fusion on | off - " .. L["guilde en chat fusionné : l'appel passe par le chat de guilde"])
-        self:Print("/wpp version - " .. L["affiche la version"])
+        self:PrintHelp()
     end
+end
+
+function NS:PrintHelp()
+    self:Print(L["Commandes :"])
+    self:Print("/wpp - " .. L["état des alertes de la guilde"])
+    self:Print("/wpp on | off - " .. L["recevoir ou non les appels des guildiens"])
+    for _, line in ipairs(self.helpLines) do self:Print(line) end
+    self:Print("/wpp options - " .. L["ouvre la page des réglages"])
+    self:Print("/wpp version - " .. L["affiche la version"])
 end
 
 SLASH_WORLDPVPPOLICE1 = "/wpp"

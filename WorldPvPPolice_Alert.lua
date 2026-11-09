@@ -260,26 +260,19 @@ end
 
 -- ===== « J'arrive » (un geste) =====
 
--- Prévient la guilde (l'appelant reconnaît son nom complet) et le fil Discord (D12, la ligne
--- « OMW <moi> > <appelant> #SOS<n> », sans suivi de son retour : rien n'en dépend), ou le chat de guilde
--- si l'appel y passe (S5 : l'appelant a l'option, il le dit dans son SOS, je n'ai rien à régler), pose un
--- point de route sur le cadavre s'il a des coordonnées (pas en zone seule, D14). Rend { guild, discord,
--- waypoint } ou nil si l'alerte n'existe plus.
+-- Prévient la guilde (l'appelant reconnaît son nom complet), puis le module s'il y en a un, dans la pile
+-- du clic (il a l'alerte : son numéro, son appelant, son champ F, S5), et pose un point de route sur le
+-- cadavre s'il a des coordonnées (pas en zone seule, D14). Rend { guild, discord, waypoint } ou nil si
+-- l'alerte n'existe plus ; `discord` = ce que rend le module (nil sans module).
 function Alert:Respond(key)
     local a = self.list[key]
     if not a then return nil end
     local p = self.probe
-    local report = { guild = "failed", discord = "none", waypoint = false }
+    local report = { guild = "failed", waypoint = false }
     local payload = Line.EncodeOMW(a.n, a.sender)
     local result = payload and call(p.sendGuild, payload)
     if is(result, 0) or is(result, true) then report.guild = "sent" end
-    local club, stream = call(p.stream)
-    local line = Line.BuildOMW(call(p.me), a.sender, a.n)
-    if line and club then
-        report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
-    elseif line and a.fusion then
-        report.discord = pcall(p.sendChat, line) and "chat" or "failed"
-    end
+    report.discord = NS.Bridged("Respond", a)
     if a.x and a.y then report.waypoint = is(call(p.setWaypoint, a.map, a.x, a.y), true) end
     a.responded = true
     changed(self, "respond")
@@ -301,7 +294,6 @@ Alert.probe = {
     now         = function() return time() end,   -- secondes réelles : les alertes survivent au /reload (D17)
     guid        = function() return UnitGUID("player") end,
     db          = function() return NS.db end,
-    me          = function() return UnitName("player") end,
     fullName    = function() return GetUnitName("player", true) end,
     unitFull    = function() return UnitFullName("player") end,
     realm       = function() return GetNormalizedRealmName() end,
@@ -309,9 +301,6 @@ Alert.probe = {
     alertsOn    = function() return not (NS.db and NS.db.alerts == false) end,
     isGuildMember = function(name) return C_GuildInfo.MemberExistsByName(name) end,
     mapName     = function(map) local info = C_Map.GetMapInfo(map); return info and info.name end,
-    stream      = function() return NS.Discord.Stream() end,
-    sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
-    sendChat    = function(line) C_ChatInfo.SendChatMessage(line, "GUILD") end,
     setWaypoint = setWaypoint,
 }

@@ -2,8 +2,9 @@
 
 > État : **validée** · 2026-10-30 · Demande du user (« penser à créer une spec si on n'a pas de
 > liaison de données entre WoW et Discord ») ; options de l'agent, **tranchées par le user** (S1 à S5).
-> O1 et O3 codées, jamais vues en jeu (M12 à faire) ; O2 attend M4 et M13. La spec de l'appel lui-même
-> reste `appel-a-l-aide.md`.
+> O1 et O3 codées, jamais vues en jeu (M12 à faire) ; O2 attend M4 et M13. S7 (Discord dans un module
+> à part, `WorldPvPPoliceDiscord` ; remplace l'interrupteur S6) codée le 2026-11-09, jamais vue en jeu.
+> La spec de l'appel lui-même reste `appel-a-l-aide.md`.
 
 ## Le problème
 
@@ -100,7 +101,7 @@ Aujourd'hui, l'appelant lit « non relié » sans savoir pourquoi ni qui peut y 
   jeu : O1 le lui dit.
 - **O3, le bot efface la ligne brute du salon relié** : en flux mêlé, l'effacer sur Discord la retire-t-il
   aussi du chat de guilde en jeu ? Pas mesuré (M12).
-- **O3 allumée alors que la guilde a le fil séparé** : l'addon voit le fil (`Discord.Stream()`) et
+- **O3 allumée alors que la guilde a le fil séparé** : le module voit le fil (`Stream.Get()`) et
   l'emploie ; l'option ne sert alors à rien et n'écrit rien dans le chat de guilde.
 - **O3, pas de retour à attendre** : en flux mêlé, aucune ligne ne revient dans un fil Discord. L'addon
   sait seulement que la ligne est partie dans le chat de guilde, et l'encart le dit (« Discord : par le
@@ -144,6 +145,32 @@ Discord (le serveur de test du user).
   flux mêlé, c'est souvent un seul officier qui saura qu'il faut l'allumer. Le drapeau ne part que si
   l'option est allumée ET que l'appelant ne voit pas le fil séparé ; un répondant qui voit le fil
   l'emploie, drapeau ou non.
+- **S6** (user, 2026-11-09, « on va le publier sur CurseForge donc faudrait aussi une option sans
+  Discord pour ceux qui vont le télécharger à l'extérieur de notre guilde ») — le besoin : une guilde
+  sans le bot sur son Discord, mais reliée en fil séparé, recevrait des lignes `SOS …` brutes que
+  personne ne lit. D'abord codé en interrupteur par joueur (`/wpp discord on|off`, une case, branche
+  `feat/wpp-sans-discord`, jamais fusionnée ni publiée) ; **remplacé le même jour par S7**.
+- **S7** (user, 2026-11-09, « on crée un module à télécharger sur CurseForge ou bien ? pvp police et un
+  autre pvp police discord avec le module ? », puis « oui vas-y ») — **Deux addons** :
+  - **World PvP Police Guild** (`WorldPvPPolice`, l'addon de base) : l'appel en jeu, la guilde seule.
+    Pas un mot de Discord à l'écran (encart, « Ton appel », aide de `/wpp`, page d'options, traductions)
+    et aucun chemin vers Discord ni vers le chat de guilde ; le SOS ne porte jamais le drapeau `F`. C'est
+    ce que télécharge une guilde sans le bot.
+  - **World PvP Police Guild - Discord** (`WorldPvPPoliceDiscord` : le script de création refuse le
+    `_`) : la moitié « en jeu » du bot. Ce qui touchait à Discord y est passé tel quel : le fil, la ligne
+    du bot, son retour, le délai de 2 minutes, O1, O3 (S3, S5). `## Dependencies: WorldPvPPolice`.
+    Installé = allumé ; pour couper, on le désactive dans la liste des AddOns : plus d'interrupteur
+    `discord`, plus de défaut à choisir. Il ajoute `/wpp discord`, `/wpp fusion` et sa case « Discord en
+    chat fusionné » à la page de la base ; `fusion` vit dans SA base (`WorldPvPPoliceDiscordDB`), reprise
+    une fois de `WorldPvPPoliceDB` où le PTR l'avait posée.
+  - **La prise** (`WorldPvPPolice_Bridge.lua`) : le module s'y branche (`NS:Plug`) ; la base l'appelle
+    dans la pile du geste (`C_Club.SendMessage` l'exige), sous `pcall`, et lui laisse une part du texte
+    (« · Discord : envoyé »). `WorldPvPPolice_Line.lua` (les deux formats, gelés) reste dans la base.
+  - Conséquence pour S5 : un répondant sans le module n'écrit pas son `OMW` dans le chat de guilde, même
+    si l'appelant a le drapeau. Une guilde en chat fusionné installe le module chez tous.
+  - CurseForge : deux projets ; le module doit déclarer la base comme dépendance requise (`.pkgmeta`,
+    `required-dependencies`, ou la page du projet) pour que l'appli l'installe avec. Pas encore vérifié,
+    à régler avant la première version.
 
 ## Critères d'acceptation (des options retenues)
 
@@ -162,6 +189,21 @@ Discord (le serveur de test du user).
    `#alertes-pvp`, avec qui arrive et « réglé ». Témoin : le même appel en flux séparé.
 6. [test, bot] (O3) En `repondre`, le journal du bot ne note que les lignes d'appel ; un message de chat
    ordinaire venu du jeu n'y laisse aucune trace de son texte.
+7. [test] (S7) La base seule : aucune sonde vers Discord ; `C_Club.SendMessage` et
+   `SendChatMessage` jamais appelés à l'appel, à la mise à jour, au « J'arrive » (même pour un appel au
+   drapeau `F`) ni à « C'est réglé », guilde reliée en fil séparé ou non ; pas de drapeau `F`. Le module
+   branché, sans fil ni chat fusionné : le message de guilde identique à l'octet ; avec le fil, la ligne
+   part. (`tests/test_wpp_sans_discord.lua`, puis les tests WPP qui chargent le module)
+8. [test] (S7) La base seule ne dit pas un mot de Discord : compte rendu de l'encart, sa ligne du bas
+   avant l'envoi, « Ton appel », l'aide de `/wpp`, la page d'options, aucune de ses traductions ;
+   `/wpp discord` et `/wpp fusion` y répondent par l'aide. Le module branché les ajoute, une ligne chacun.
+9. [test] (S7) La page d'options de la base a une case (les alertes), qui écrit le même réglage que
+   `/wpp on|off` ; le module y ajoute la sienne, qui lit et écrit SA base et suit `/wpp fusion` ; aucune
+   ligne de chat ; `/wpp options` refuse en combat.
+10. [human] (S7) En jeu (PTR, puis Forever), la base SEULE : la page a une case, un appel ne laisse
+    aucune ligne dans le salon relié et l'encart ne parle pas de Discord. Puis le module ajouté (client
+    relancé : un addon neuf) : la liste des AddOns le montre dépendant de la base, sa case apparaît, la
+    ligne de l'appel arrive dans le salon relié (témoin), `/wpp discord` répond.
 
 ## Renvois
 
@@ -181,3 +223,9 @@ Discord (le serveur de test du user).
   serveur de test en flux mêlé.
 - **T3** (bot) — En `repondre`, ne noter que les lignes d'appel (critère 6).
 - **T4** (addon) — O2, seulement après M4 (un guildien sans Discord : un testeur extérieur) et M13.
+- **T5** (addon) — S6 codée sur `feat/wpp-sans-discord` : remplacée par T6, qui en reprend `/wpp options`
+  et la page d'options. Cette branche ne se fusionne jamais seule.
+- **T6** (addon + module + outillage) — CODÉ le 2026-11-09 (`feat/wpp-module-discord` dans les trois
+  dépôts, par-dessus `feat/wpp-sans-discord`) : S7, la prise, le module `WorldPvPPoliceDiscord`. Les
+  trois branches se fusionnent le même jour (les tests de l'outillage lisent le dossier du module).
+  Reste le critère 10 en jeu, et la dépendance requise côté CurseForge.

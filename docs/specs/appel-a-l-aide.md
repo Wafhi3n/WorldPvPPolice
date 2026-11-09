@@ -23,6 +23,10 @@
 > Rien n'est mesuré sur Forever : le jeu est fermé du 2026-10-21 au lancement du 2026-11-04 ; les
 > mesures M1 à M8 se font au banc après le lancement. Le bot qui lit la ligne Discord a sa propre spec :
 > `F:\CraftingOrderBot\docs\specs\alertes-pvp.md`.
+> **Depuis le 2026-11-09** (S7 de `appel-sans-pont-discord.md`), tout ce que cette spec dit du fil
+> Discord (D5, D12, D16, la ligne du bot, son retour, le délai de 2 minutes) vit dans le module à part
+> `WorldPvPPoliceDiscord`, branché sur la prise de l'addon (`WorldPvPPolice_Bridge.lua`) ; l'addon
+> seul ne prévient que la guilde. Le contrat (`WorldPvPPolice_Line.lua`) reste dans l'addon.
 
 ## Le problème
 
