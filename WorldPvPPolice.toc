@@ -25,9 +25,11 @@ WorldPvPPolice.lua
 # Formats lus hors de l'addon : ligne du fil Discord (bot) et message d'addon de guilde.
 WorldPvPPolice_Line.lua
 
-# La mort : fil Discord de la guilde, tueur et cadavre (logique pure + sondes), envoi de l'appel,
-# reception des appels des guildiens, encart sous la fenetre.
-WorldPvPPolice_Discord.lua
+# La prise d'un module de sortie : WorldPvPPoliceDiscord, addon a part, s'y branche.
+WorldPvPPolice_Bridge.lua
+
+# La mort : tueur et cadavre (logique pure + sondes), envoi de l'appel, reception des appels des
+# guildiens, encart sous la fenetre.
 WorldPvPPolice_Death.lua
 WorldPvPPolice_Call.lua
 WorldPvPPolice_Alert.lua
@@ -39,5 +41,5 @@ WorldPvPPolice_Panel.lua
 WorldPvPPolice_AlertFrame.lua
 WorldPvPPolice_CallerFrame.lua
 
-# La page de l'addon dans Options > AddOns (alertes, Discord, chat fusionne).
+# La page de l'addon dans Options > AddOns (les alertes ; un module y ajoute ses cases).
 WorldPvPPolice_Options.lua

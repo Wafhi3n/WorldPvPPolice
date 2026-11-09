@@ -1,8 +1,8 @@
 -- WorldPvPPolice_CallerFrame.lua — « Ton appel » : ce que voit celui qui a appelé, tant que son appel
 -- est en cours (spec docs/specs/appel-a-l-aide.md, « Ce qu'on veut » 3 et 6 ; critères 11 et 13).
 --
--- Le numéro, les morts, où en est la ligne Discord (envoyée seulement quand elle est revenue en jeu,
--- D16), qui est en route, et le bouton « C'est réglé ». Elle reste après « Libérer l'esprit », quand
+-- Le numéro, les morts (et la part d'un module branché sur la prise : où en est sa ligne Discord, D16),
+-- qui est en route, et le bouton « C'est réglé ». Elle reste après « Libérer l'esprit », quand
 -- l'encart de la mort a disparu : c'est là que l'appelant voit si son appel est parti. Elle se ferme
 -- d'elle-même quand l'appel expire (D11). En tête de la pile de _AlertFrame.lua, déplaçable comme elle.
 -- Sa case de message (D18) met l'appel à jour sans mourir : en fantôme, après une déco-reco. Mort,
@@ -38,7 +38,7 @@ function CallerFrame:Build()
     f:SetPoint("TOP", AF:Pile(), "TOP")
     f.title = AF.Text(f, "GameFontNormal", nil, -18)
     f.status = AF.Text(f, "GameFontHighlightSmall", f.title, -4)
-    f.why = NS.Discord.AttachWhy(f, f.status)
+    f.why = NS.Bridged("Attach", f, f.status)   -- le survol que pose le module, s'il y en a un
     f.enRoute = AF.Text(f, "GameFontHighlightSmall", f.status, -2)
     f.box = buildMessageBox(f)
     f.update = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -61,21 +61,6 @@ local function count(set)
     return n
 end
 
--- « Envoyé » seulement si la dernière ligne revenue en jeu (D16) est celle de l'appel tel qu'il est :
--- une mort notée ou un message changé depuis, et Discord n'est plus à jour. Le délai de 2 minutes
--- entre deux lignes se compte devant le joueur ; passé, il faut un geste (« Mettre à jour »).
-local function discordState(a)
-    if a.pending then return L["Discord : envoi en cours"] end
-    local line = NS.Call:CurrentLine(a)
-    if a.discordSig and (not line or a.discordSig == line) then
-        return a.viaChat and L["Discord : par le chat de guilde"] or L["Discord : envoyé"]
-    end
-    if not (a.fusion or NS.Discord.Stream()) then return L["Discord : non relié"] end
-    local wait = NS.Call:DiscordWait(a)
-    if wait > 0 then return string.format(L["Discord : dans %d s"], wait) end
-    return a.discordSig and L["Discord : pas à jour"] or L["Discord : pas envoyé"]
-end
-
 -- La case suit le message de l'appel quand il change (envoyé d'ici ou de l'encart, repris après un
 -- /reload), sans écraser ce que le joueur est en train d'écrire.
 local function fillBox(f, a)
@@ -84,11 +69,12 @@ local function fillBox(f, a)
     f.msgShown = a.msg
 end
 
--- Discord coupé par le joueur (S6) : les morts seules, sans un mot de Discord.
+-- Les morts, et la part du module s'il y en a un (« · Discord : envoyé »).
 function CallerFrame.StatusText(a)
     local deaths = string.format(L["Morts : %d"], count(a.deaths))
-    if not NS.Discord.Enabled() then return deaths end
-    return deaths .. " · " .. discordState(a)
+    local tail = NS.Bridged("CallerSuffix", a)
+    if type(tail) == "string" and tail ~= "" then return deaths .. " · " .. tail end
+    return deaths
 end
 
 local function fill(f, a)
@@ -155,7 +141,7 @@ function CallerFrame:Send()
     self:Update()
 end
 
--- « C'est réglé » (un geste) : END à la guilde et sur Discord, l'appel est clos (NS.Call:Settle).
+-- « C'est réglé » (un geste) : END à la guilde et au module, l'appel est clos (NS.Call:Settle).
 function CallerFrame:Settle()
     NS.Call:Settle()
     self:Update()

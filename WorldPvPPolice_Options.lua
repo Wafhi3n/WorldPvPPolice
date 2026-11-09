@@ -1,5 +1,5 @@
--- WorldPvPPolice_Options.lua — la page de l'addon dans Options → AddOns (S6 de
--- docs/specs/appel-sans-pont-discord.md) : trois cases, les mêmes réglages que les commandes /wpp.
+-- WorldPvPPolice_Options.lua — la page de l'addon dans Options → AddOns (S6 et S7 de
+-- docs/specs/appel-sans-pont-discord.md) : les mêmes réglages que les commandes /wpp.
 --
 -- Méthode de LeyLines (LeyLines_OptionsPanel.lua, vue en jeu le 2026-10-08, build 70245) : une page
 -- « canevas », nos cases faites du modèle du jeu, AUCUN menu déroulant (sur Forever, ouvrir un menu
@@ -14,14 +14,11 @@ NS.OptionsPanel = Options
 
 local ROW = 30
 
--- Les cases, dans l'ordre. `needs` : grisée tant que l'autre réglage est éteint.
+-- Les cases, dans l'ordre. Un module y ajoute les siennes au chargement de ses fichiers, avant le
+-- premier affichage, avec `get` et `set` (ses réglages vivent dans SA base).
 Options.LIST = {
     { key = "alerts", label = L["Recevoir les appels des guildiens"],
       tip = L["Une fenêtre s'ouvre quand un guildien tué par un joueur appelle à l'aide. Comme /wpp on | off."] },
-    { key = "discord", label = L["Écrire les appels sur Discord"],
-      tip = L["Pour une guilde dont le Discord a le bot World PvP Police. Décoché : tes appels et tes « J'arrive » restent en jeu, rien n'est écrit sur Discord, et l'addon n'en parle plus. Comme /wpp discord on | off."] },
-    { key = "fusion", needs = "discord", label = L["Discord en chat fusionné"],
-      tip = L["Guilde reliée à Discord sans fil séparé : l'appel s'écrit aussi dans le chat de guilde, que toute la guilde voit. Comme /wpp fusion on | off."] },
 }
 
 -- Accroché, pas remplacé : le modèle de case peut avoir ses propres scripts de survol.
@@ -37,19 +34,21 @@ end
 
 function Options:Check(parent, e, y)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    cb:SetPoint("TOPLEFT", e.needs and 40 or 16, y)
+    cb:SetPoint("TOPLEFT", 16, y)
     cb:SetSize(26, 26)
     cb.Text:SetFontObject("GameFontHighlight")
     cb.Text:SetJustifyH("LEFT")
     cb.Text:SetText(e.label)
     cb:SetHitRectInsets(0, -300, 0, 0)   -- le libellé fait partie de la case : survol et clic
-    cb:SetScript("OnClick", function(box) NS:SetOption(e.key, box:GetChecked() and true or false) end)
+    cb:SetScript("OnClick", function(box)
+        local on = box:GetChecked() and true or false
+        if type(e.set) == "function" then pcall(e.set, on) else NS:SetOption(e.key, on) end
+    end)
     tip(cb, e.label, e.tip)
     cb.Load = function(box)
-        box:SetChecked(NS.db[e.key] == true)
-        local on = not e.needs or NS.db[e.needs] == true
-        box:SetEnabled(on)
-        box.Text:SetFontObject(on and "GameFontHighlight" or "GameFontDisable")
+        local v
+        if type(e.get) == "function" then v = select(2, pcall(e.get)) else v = NS.db[e.key] end
+        box:SetChecked(v == true)
     end
     return cb
 end

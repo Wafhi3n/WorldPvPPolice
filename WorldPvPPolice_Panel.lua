@@ -10,8 +10,8 @@
 -- l'esprit », tous trois des gestes ; et la libération automatique (fin du minuteur), sans geste : la
 -- guilde seulement. « Libérer » n'a PAS de touche : seules les fenêtres à `enterClicksFirstButton` en
 -- posent une (StaticPopup.lua, lu le 2026-10-27 dans les sources Forever 70532 et PTR 12.1.7), et DEATH
--- n'en a pas. Le compte rendu s'affiche dans l'encart, jamais dans le chat (skill chat-output) ; celui
--- de Discord se complète quand la ligne revient en jeu (CHAT_MSG_GUILD_DISCORD, NS.Call:OnEcho).
+-- n'en a pas. Le compte rendu s'affiche dans l'encart, jamais dans le chat (skill chat-output) ; un
+-- module branché sur la prise (_Bridge.lua) y ajoute sa part, et la complète plus tard (NS.Call:Notify).
 local _, NS = ...
 local L = NS.L
 
@@ -20,7 +20,7 @@ NS.Panel = Panel
 
 local WHICH = "DEATH"
 local WIDTH, HEIGHT = 330, 128
-local MAX_MESSAGE_BYTES = 120   -- la ligne Discord entière tient en 255 octets (NS.Line coupe de toute façon)
+local MAX_MESSAGE_BYTES = 120   -- la ligne entière du bot tient en 255 octets (NS.Line coupe de toute façon)
 local CHECK_EVERY = 0.25        -- s entre deux vérifications « la fenêtre de mort est-elle encore là ? »
 local RECAP_RETRY = 1           -- s : le récap peut arriver après la fenêtre ; on le relit une fois
 
@@ -86,11 +86,11 @@ function Panel:Build()
     f.call:SetPoint("LEFT", f.box, "RIGHT", 8, 0)
     f.call:SetText(L["Appeler"])
     f.call:SetScript("OnClick", function() Panel:Call("button") end)
-    f.discord = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    f.discord:SetPoint("BOTTOM", 0, 14)
-    f.discord:SetWidth(WIDTH - 24)
-    f.discord:SetWordWrap(false)   -- le compte rendu tient sur une ligne, sous la case (coupé au pire)
-    f.why = NS.Discord.AttachWhy(f, f.discord)
+    f.status = f:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    f.status:SetPoint("BOTTOM", 0, 14)
+    f.status:SetWidth(WIDTH - 24)
+    f.status:SetWordWrap(false)   -- le compte rendu tient sur une ligne, sous la case (coupé au pire)
+    f.why = NS.Bridged("Attach", f, f.status)   -- le survol que pose le module, s'il y en a un
     -- « Ton appel » cache sa case tant que l'encart est là (une seule case à l'écran) : il suit tout de
     -- suite, sans attendre son passage d'une seconde.
     local function followCaller() if NS.CallerFrame then NS.CallerFrame:Update() end end
@@ -125,38 +125,20 @@ function Panel:Refresh(state)
     f.killer:SetText(NS.Death.KillerText(state.killer, L) or "")
     f.where:SetText(NS.Death.WhereText(state.snap, L))
     f.call:SetText(NS.Call:IsActive() and L["Mettre à jour"] or L["Appeler"])
-    if self.status then
-        f.discord:SetText(self.status)
-    elseif not NS.Discord.Enabled() then
-        f.discord:SetText("")   -- Discord coupé par le joueur (S6) : l'encart n'en parle plus
-    elseif NS.Discord.Stream() then
-        f.discord:SetText(L["Discord : relié"])
-    elseif NS.Discord.FusionOn() then
-        f.discord:SetText(L["Discord : par le chat de guilde"])
-    else
-        f.discord:SetText(L["Discord : non relié (appel en jeu seulement)"])
-    end
+    -- Avant tout envoi, la ligne est au module (où en est son lien) ; sans module, elle reste vide.
+    f.status:SetText(self.status or NS.Bridged("PanelLine") or "")
 end
 
-local function discordText(r)
-    if r.discord == "later" then return string.format(L["Discord : dans %d s"], r.wait or 0) end
-    if r.discord == "chat" or r.discord == "chatsame" then return L["Discord : par le chat de guilde"] end
-    if r.discord == "pending" then return L["Discord : envoi en cours"] end
-    if r.discord == "sent" or r.discord == "same" then return L["Discord : envoyé"] end
-    if r.discord == "noecho" then return L["Discord : pas de retour"] end
-    if r.discord == "none" or r.discord == "nogesture" then return L["Discord : non relié"] end
-    return L["Discord : refusé"]
-end
-
--- Le compte rendu d'un envoi, en une ligne : « Appel n°7 · guilde : prévenue · Discord : envoyé ».
--- Discord coupé (S6) : « Appel n°7 · guilde : prévenue », sans un mot de Discord.
+-- Le compte rendu d'un envoi, en une ligne : « Appel n°7 · guilde : prévenue », et la part du module
+-- s'il y en a un (« · Discord : envoyé »).
 function Panel.ReportText(r)
     if r.err == "pos" then return L["Position illisible : appel impossible"] end
     if r.err then return L["Appel impossible"] end
     local guild = r.guild == "failed" and L["guilde : échec"] or L["guilde : prévenue"]
     local head = string.format(L["Appel n°%d"], r.n) .. " · " .. guild
-    if r.discord == "off" then return head end
-    return head .. " · " .. discordText(r)
+    local tail = NS.Bridged("ReportSuffix", r)
+    if type(tail) == "string" and tail ~= "" then return head .. " · " .. tail end
+    return head
 end
 
 -- Pendant un appel en cours, la case reprend SON message (envoyé d'ici, de « Ton appel », ou gardé
@@ -208,15 +190,15 @@ function Panel:Call(origin)
     self:Refresh(Death.last)
 end
 
--- La ligne Discord en cours est revenue en jeu (« sent ») ou pas à temps (« noecho ») : le compte
--- rendu se complète, s'il est encore celui de cette mort.
-function Panel:OnDiscord(state)
+-- Le module a la suite de son envoi « pending » (pour Discord : la ligne est revenue en jeu, ou pas à
+-- temps) : le compte rendu se complète, s'il est encore celui de cette mort.
+function Panel:OnBridge(state)
     if not (self.report and self.report.discord == "pending") then return end
     self.report.discord = state
     self.status = Panel.ReportText(self.report)
     if self.frame and self.frame:IsShown() then self:Refresh(NS.Death.last) end
 end
-NS.Call.onDiscord = function(state) Panel:OnDiscord(state) end
+NS.Call.onBridge = function(state) Panel:OnBridge(state) end
 
 -- Le récap a pu arriver après la fenêtre : un tueur devenu « monstre » ferme l'encart (et cette mort
 -- ne compte plus dans l'appel en cours), un joueur trouvé s'affiche.
@@ -257,8 +239,8 @@ local function onPopupShow(which)
 end
 
 -- « Libérer l'esprit » cliqué : StaticPopup_OnClick(fenêtre DEATH, 1), qui a déjà appelé RepopMe()
--- quand on passe. On est encore dans la pile du clic, donc avec le geste qu'exige C_Club.SendMessage
--- (M2 au banc ; s'il manquait, la ligne ne reviendrait pas et l'encart ne dirait pas « envoyé »). Sans
+-- quand on passe. On est encore dans la pile du clic, donc avec le geste qu'exige le module Discord
+-- (C_Club.SendMessage ; M2 au banc : s'il manquait, sa ligne ne reviendrait pas en jeu). Sans
 -- message dans la case, libérer reste un simple « libérer » (D3).
 local function onPopupClick(dialog, index)
     if index ~= 1 then return end
@@ -296,17 +278,13 @@ local function onAlive()
 end
 
 -- PLAYER_DEAD capture la mort (la fenêtre s'ouvre sur le même événement, chez Blizzard, parfois avant
--- nous) ; libérer ou être ressuscité referme l'encart. CHAT_MSG_GUILD_DISCORD rend notre ligne Discord
--- (texte en 1er, GUID en 12e) : inscrit sous pcall, un événement inconnu d'un client lèverait.
+-- nous) ; libérer ou être ressuscité referme l'encart.
 local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_DEAD")
 events:RegisterEvent("PLAYER_ALIVE")
 events:RegisterEvent("PLAYER_UNGHOST")
-pcall(events.RegisterEvent, events, "CHAT_MSG_GUILD_DISCORD")
-events:SetScript("OnEvent", function(_, event, ...)
-    if event == "CHAT_MSG_GUILD_DISCORD" then
-        NS.Call:OnEcho((...), (select(12, ...)))
-    elseif event == "PLAYER_DEAD" then
+events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_DEAD" then
         markDeath()
         NS.Death:Capture()
     elseif event == "PLAYER_ALIVE" then

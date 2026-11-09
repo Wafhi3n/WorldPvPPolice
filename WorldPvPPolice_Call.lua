@@ -1,19 +1,13 @@
--- WorldPvPPolice_Call.lua — l'appel qui part : l'ouvrir, le mettre à jour, compter les morts, écrire
--- dans le fil Discord et à la guilde (spec docs/specs/appel-a-l-aide.md, « Ce qu'on veut » 2, 4 et 5,
--- D3, D4, D9, D11, D13 ; critère 4).
+-- WorldPvPPolice_Call.lua — l'appel qui part : l'ouvrir, le mettre à jour, compter les morts, prévenir
+-- la guilde (spec docs/specs/appel-a-l-aide.md, « Ce qu'on veut » 2, 4 et 5, D3, D4, D9, D11, D13 ;
+-- critère 4). Discord, c'est le module WorldPvPPoliceDiscord, branché sur la prise (_Bridge.lua, S7).
 --
 -- Logique pure + des sondes (Call.probe) qui seules touchent au jeu, comme _Death.lua : les tests
 -- remplacent les sondes et l'horloge.
 --
--- TROIS RÈGLES DURES :
---   - C_Club.SendMessage exige un geste du joueur (clic, touche) : hors geste, c'est
---     ADDON_ACTION_BLOCKED, que pcall ne voit PAS. Le chemin sans geste (libération automatique, D13)
---     n'écrit qu'à la guilde, jamais sur Discord.
---   - Une ligne Discord n'est PARTIE que quand elle revient en jeu (CHAT_MSG_GUILD_DISCORD, notre
---     texte, notre GUID ; mesuré sur Forever le 2026-10-10) dans les ECHO_WAIT secondes : un envoi
---     bloqué ne lève rien. D'ici là elle est « en cours » ; sans retour, rien n'est compté (ni délai
---     de 2 minutes, ni « déjà envoyée ») et le geste suivant la renvoie (décision du user, 2026-10-27,
---     après la revue api-gotcha-reviewer).
+-- DEUX RÈGLES DURES :
+--   - Le module est appelé DANS la pile du geste, avec `gesture` : la libération automatique (D13)
+--     n'en a pas, et C_Club.SendMessage hors geste, c'est ADDON_ACTION_BLOCKED, que pcall ne voit pas.
 --   - On envoie la capture faite MORT (Death.last), jamais une capture refaite à l'envoi : le clic sur
 --     « Libérer » et la libération automatique arrivent quand on devient fantôme, et le fantôme est
 --     chez la gardienne des âmes, peut-être sur une autre carte.
@@ -24,8 +18,6 @@ local Call = {}
 NS.Call = Call
 
 Call.EXPIRY = 30 * 60       -- s après la dernière mise à jour partie (D11, 30 min depuis le 2026-10-28)
-Call.DISCORD_EVERY = 120    -- s entre deux lignes Discord d'un même appel (morts répétées, critère 4)
-Call.ECHO_WAIT = 10         -- s laissées à la ligne Discord pour revenir en jeu (délai jamais mesuré)
 
 local function readable(v) return Line.Readable(v) end
 
@@ -54,13 +46,12 @@ local function now(p) return call(p.now) or 0 end
 
 -- ===== L'appel en cours =====
 -- Call.active = { n, serial (la mort qui l'a ouvert), deaths = { [mort] = true }, snap, killers =
--- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, discordAt, discordSig, pending, enRoute =
--- { { sender, name }, … } }.
+-- { { key = GUID, name, class }, … }, msg, sentAt, guildSig, fusion, enRoute = { { sender, name }, … } },
+-- plus les champs que le module y pose (discordAt, discordSig, viaChat).
 -- D17 (user, 2026-10-28) : il survit à un /reload et à une déco-reco. C'est la MÊME table que
 -- db.calls[GUID du perso] : tout changement est gardé, un reroll n'en hérite pas. Les heures sont donc
 -- en secondes réelles (time(), probe.now), pas en GetTime(). Au retour, on le reprend s'il a moins de
--- EXPIRY ; sa ligne Discord « en cours » est oubliée (son attente du retour est morte avec le
--- /reload : le geste suivant la renverra).
+-- EXPIRY.
 
 local function ident(p)
     local db, key = call(p.db), text((call(p.guid)))
@@ -89,7 +80,6 @@ function Call:Restore()
     local a = type(db.calls) == "table" and db.calls[key]
     if not a then return end
     if isCall(a) and now(self.probe) - a.sentAt < Call.EXPIRY then
-        a.pending = nil
         self.active = a
     else
         db.calls[key] = nil
@@ -179,18 +169,14 @@ local function fields(a, me)
              killers = a.killers, msg = a.msg, fusion = a.fusion }
 end
 
--- Discord coupé par le joueur (S6) : rien n'y part, ni par le fil ni par le chat de guilde. Une sonde
--- absente ne coupe rien (seul un `false` franc le fait).
-local function discordOff(p) return call(p.discordOn) == false end
-
--- L'option « Discord en chat fusionné » allumée, sans fil séparé (avec le fil, elle n'a pas d'effet).
-local function viaGuildChat(p)
-    if discordOff(p) or call(p.fusion) ~= true then return nil end
-    if call(p.stream) then return nil end
-    return true
+-- Les champs de l'appel tel qu'il est (nil sans position) : le module en refait sa ligne, pour dire
+-- si ce qu'il a envoyé est encore à jour.
+function Call:Fields(a)
+    if not (a and a.snap and a.snap.map) then return nil end
+    return fields(a, text((call(self.probe.me))))
 end
 
--- ===== Les deux sorties =====
+-- ===== La sortie =====
 
 -- Le message d'addon de guilde : pas de geste demandé (D13). Rien si rien n'a changé depuis le
 -- dernier (un double clic n'envoie pas deux fois). SendAddonMessage rend 0 quand le message part
@@ -203,113 +189,31 @@ function Call:ToGuild(a, payload)
     return "sent"
 end
 
--- La ligne du fil Discord : seulement sur un GESTE, au plus une toutes les DISCORD_EVERY secondes pour
--- un même appel ; une mise à jour retenue part avec le geste suivant (critère 4). Rend (état, attente) ;
--- « pending » = partie sans retour encore : OnEcho la confirme, CheckEcho la déclare perdue. « off » =
--- Discord coupé par le joueur : rien n'est tenté, et l'écran n'en dit rien.
-function Call:ToDiscord(a, c, gesture)
-    local p = self.probe
-    if discordOff(p) then return "off" end
-    local club, stream = call(p.stream)
-    if not club then return self:ToGuildChat(a, c, gesture) end
-    local line = Line.BuildSOS(c)
-    if not line then return "failed" end
-    if a.discordSig == line then return "same" end
-    if a.pending then
-        if now(p) - a.pending.at < Call.ECHO_WAIT then return "pending" end
-        a.pending = nil   -- jamais revenue (CheckEcho n'est pas encore passé) : comme refusée
-    end
-    if not gesture then return "nogesture" end
-    local wait = self:DiscordWait(a)
-    if wait > 0 then return "later", wait end
-    if not pcall(p.sendDiscord, club, stream, line) then return "failed" end
-    a.pending = { line = line, at = now(p) }
-    call(p.after, Call.ECHO_WAIT + 1, function() self:CheckEcho() end)
-    return "pending"
-end
-
--- O3 (S3, S5) : sans fil séparé et l'option allumée, la même ligne dans le chat de guilde, sur un geste,
--- même rythme, jamais en instance. Aucun retour à attendre : « chat » dit qu'elle est partie, pas qu'elle
--- a atteint Discord (une guilde pas reliée du tout ne fait que la voir passer).
-function Call:ToGuildChat(a, c, gesture)
-    if not a.fusion then return "none" end
-    local p = self.probe
-    local line = Line.BuildSOS(c)
-    if not line then return "failed" end
-    if a.discordSig == line then return "chatsame" end
-    local inst = call(p.inInstance)
-    if not gesture or (readable(inst) and inst == true) then return "nogesture" end
-    local wait = self:DiscordWait(a)
-    if wait > 0 then return "later", wait end
-    if not pcall(p.sendChat, line) then return "failed" end
-    a.discordAt, a.discordSig, a.viaChat = now(p), line, true
-    return "chat"
-end
-
--- Secondes avant que la ligne suivante de cet appel puisse partir sur Discord (0 = dès le geste).
-function Call:DiscordWait(a)
-    if not a.discordAt then return 0 end
-    return math.max(0, math.ceil(Call.DISCORD_EVERY - (now(self.probe) - a.discordAt)))
-end
-
--- La ligne Discord de l'appel tel qu'il est (nil sans position) : « Ton appel » la compare à la
--- dernière revenue en jeu pour dire si Discord est à jour.
-function Call:CurrentLine(a)
-    if not (a and a.snap and a.snap.map) then return nil end
-    return Line.BuildSOS(fields(a, text((call(self.probe.me)))))
-end
-
--- L'appel tel qu'il est, à la guilde puis, sur un geste, au fil Discord. Rend (compte rendu, parti ?) :
--- parti = la guilde l'a pris, une ligne Discord attend son retour, ou elle est partie par le chat.
+-- L'appel tel qu'il est, à la guilde, puis au module s'il y en a un (le geste avec). Rend (compte rendu,
+-- parti ?) : parti = la guilde l'a pris, ou quelque chose est sorti chez le module. Le champ F (S5) se
+-- décide AVANT le message : c'est lui qui le porte.
 function Call:Deliver(a, gesture)
-    a.fusion = viaGuildChat(self.probe)   -- le message d'addon le dit : les « J'arrive » suivent (S5)
+    a.fusion = NS.Bridged("Fusion") == true or nil
     local c = fields(a, text((call(self.probe.me))))
     local payload, why = Line.EncodeSOS(c)
     if not payload then return { err = why }, false end
     local report = { n = a.n, deaths = c.deaths }
     report.guild = self:ToGuild(a, payload)
-    report.discord, report.wait = self:ToDiscord(a, c, gesture)
-    return report, report.guild == "sent" or report.discord == "pending" or report.discord == "chat"
+    local out
+    report.discord, report.wait, out = NS.Bridged("Deliver", a, c, gesture)
+    return report, report.guild == "sent" or out == true
 end
 
--- L'appel a changé (envoi, retour de la ligne, quelqu'un en route, réglé) : la fenêtre « Ton appel »
--- (_CallerFrame.lua) suit.
+-- L'appel a changé (envoi, quelqu'un en route, réglé) : la fenêtre « Ton appel » (_CallerFrame.lua) suit.
 function Call:Changed()
     if type(self.onChange) == "function" then pcall(self.onChange) end
 end
 
+-- Le module a la suite d'un envoi « pending » (sa ligne est revenue, ou pas) : l'encart complète son
+-- compte rendu (Call.onBridge, _Panel.lua), « Ton appel » suit.
 function Call:Notify(state)
-    if type(self.onDiscord) == "function" then pcall(self.onDiscord, state) end
+    if type(self.onBridge) == "function" then pcall(self.onBridge, state) end
     self:Changed()
-end
-
-local function squash(s) return (s:gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")) end
-
--- La ligne est revenue en jeu (CHAT_MSG_GUILD_DISCORD : texte en 1er, GUID de l'auteur en 12e,
--- peut-être secrets) : elle est partie. Notre ligne et pas une autre : le même texte, blancs regroupés
--- (au cas où le serveur y toucherait) ; une ligne plus ancienne du même appel (même numéro, autre
--- message) ne confirme pas la nouvelle. Un GUID lisible qui n'est pas le nôtre = la ligne d'un autre.
--- Rend true si elle confirme l'envoi.
-function Call:OnEcho(line, guid)
-    local a = self.active
-    local pending = a and a.pending
-    if not (pending and readable(line) and type(line) == "string") then return false end
-    local mine = text((call(self.probe.guid)))
-    if readable(guid) and type(guid) == "string" and guid ~= "" and guid ~= mine then return false end
-    if line ~= pending.line and squash(line) ~= squash(pending.line) then return false end
-    a.discordAt, a.discordSig, a.pending, a.viaChat = pending.at, pending.line, nil, nil
-    self:Notify("sent")
-    return true
-end
-
--- ECHO_WAIT secondes sans retour : la ligne n'est pas partie (bloquée, sans erreur). Rien n'est compté,
--- le geste suivant la renverra.
-function Call:CheckEcho()
-    local a = self.active
-    local pending = a and a.pending
-    if not pending or now(self.probe) - pending.at < Call.ECHO_WAIT then return end
-    a.pending = nil
-    self:Notify("noecho")
 end
 
 -- ===== Le geste =====
@@ -317,10 +221,9 @@ end
 -- `origin` : "button", "enter", "release" (un clic ou une touche), ou "auto" (la libération
 -- automatique, sans geste : la guilde seulement, D13). `state` = la capture faite mort (Death.last),
 -- `serial` = la mort en cours. Rend nil si rien n'est à envoyer (libérer sans message, D3), sinon un
--- compte rendu : { n, deaths, guild = "sent"|"same"|"failed", discord = "pending"|"same"|"later"|"none"|
--- "nogesture"|"failed"|"chat"|"chatsame", wait } ou { err = "pos"|"num"|… } quand l'appel ne peut pas se
--- construire.
--- « pending » devient « sent » ou « noecho » plus tard, par Call.onDiscord(état).
+-- compte rendu : { n, deaths, guild = "sent"|"same"|"failed", discord, wait } ou { err = "pos"|"num"|… }
+-- quand l'appel ne peut pas se construire. `discord`, `wait` = ce que rend le module (nil sans module) ;
+-- « pending » se complète plus tard, par Call:Notify(état).
 function Call:Send(msg, origin, state, serial)
     if (origin == "release" or origin == "auto") and Line.Clean(msg) == "" then return nil end
     if not (state and serial) then return { err = "state" } end
@@ -339,7 +242,8 @@ function Call:Send(msg, origin, state, serial)
     if report.err then return report end
     -- L'appel dure 30 minutes après la dernière mise à jour PARTIE (D11) : un double clic qui n'envoie
     -- rien ne le prolonge pas. Un appel dont rien n'est parti n'est pas ouvert, et garde son numéro.
-    -- Une ligne Discord en cours compte : sans appel ouvert, son retour n'aurait rien à confirmer.
+    -- Ce qui sort chez le module compte (une ligne en cours) : sans appel ouvert, sa suite n'aurait rien
+    -- à compléter.
     if opening and not sent then return report end
     if opening then
         consume()
@@ -352,7 +256,7 @@ function Call:Send(msg, origin, state, serial)
 end
 
 -- « Ton appel » (D18) : un nouveau message pour l'appel en cours, sans nouvelle mort (vivant, en
--- fantôme, après une déco-reco). Un clic ou Entrée = un geste : la guilde et le fil Discord, comme une
+-- fantôme, après une déco-reco). Un clic ou Entrée = un geste : la guilde et le module, comme une
 -- mise à jour après une mort ; morts, position et tueurs ne bougent pas. Le même message deux fois
 -- n'envoie rien et ne prolonge pas l'appel (D11). Rend nil sans appel en cours, sinon le compte rendu.
 function Call:UpdateMessage(msg)
@@ -378,28 +282,19 @@ function Call:AddResponder(n, sender)
     return true
 end
 
--- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), et le fil Discord si une ligne de cet appel
--- y est partie ou en cours (« END <moi> #SOS<n> », D12 ; sans suivi de son retour : rien n'en dépend),
--- ou le chat de guilde si elle est passée par là (S5). Discord coupé entre-temps (S6) : rien n'y part,
--- la carte du bot passera au gris d'elle-même. L'appel est clos tout de suite chez nous, qu'importe ce
--- qui part. Rend { guild, discord } ou nil.
+-- « C'est réglé » (un geste) : la guilde (« 1 END <n> »), puis le module avec l'appel (il sait si une
+-- ligne de cet appel est partie chez lui). L'appel est clos tout de suite chez nous, qu'importe ce qui
+-- part. Rend { guild, discord } ou nil.
 function Call:Settle()
     if not self:IsActive() then return nil end
     local a, p = self.active, self.probe
     self.active = nil
     keep(self, nil)
-    local off = discordOff(p)
-    local report = { guild = "failed", discord = off and "off" or "none" }
+    local report = { guild = "failed" }
     local payload = Line.EncodeEND(a.n)
     local result = payload and call(p.sendGuild, payload)
     if readable(result) and (result == 0 or result == true) then report.guild = "sent" end
-    local club, stream = call(p.stream)
-    local line = not off and (a.discordSig or a.pending) and Line.BuildEND(call(p.me), a.n)
-    if line and club then
-        report.discord = pcall(p.sendDiscord, club, stream, line) and "sent" or "failed"
-    elseif line and a.viaChat then
-        report.discord = pcall(p.sendChat, line) and "chat" or "failed"
-    end
+    report.discord = NS.Bridged("Settle", a)
     self:Changed()
     return report
 end
@@ -411,12 +306,5 @@ Call.probe = {
     me          = function() return UnitName("player") end,
     guid        = function() return UnitGUID("player") end,
     db          = function() return NS.db end,
-    stream      = function() return NS.Discord.Stream() end,
-    discordOn   = function() return NS.Discord.Enabled() end,
-    sendDiscord = function(club, stream, line) C_Club.SendMessage(club, stream, line) end,
     sendGuild   = function(payload) return C_ChatInfo.SendAddonMessage(Line.PREFIX, payload, "GUILD") end,
-    fusion      = function() return NS.Discord.FusionOn() end,
-    inInstance  = function() return (IsInInstance()) end,
-    sendChat    = function(line) C_ChatInfo.SendChatMessage(line, "GUILD") end,
-    after       = function(seconds, fn) C_Timer.After(seconds, fn) end,
 }
