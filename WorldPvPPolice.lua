@@ -6,7 +6,7 @@
 local ADDON, NS = ...
 local L = NS.L
 
-NS.VERSION = "0.1.0"   -- = ## Version du .toc ; scripts\bump_version.ps1 -Addon WorldPvPPolice la tient égale
+NS.VERSION = "0.1.0-beta"   -- = ## Version du .toc ; scripts\bump_version.ps1 -Addon WorldPvPPolice la tient égale
 NS.TITLE = "World PvP Police Guild"   -- le nom de l'addon, jamais traduit
 _G.WorldPvPPolice = NS
 

@@ -1,15 +1,15 @@
-## Interface: 16001, 120107
+## Interface: 16001
 ## Title: World PvP Police Guild
-## Notes: World PvP Police Guild - /wpp
+## Notes: Call your guild for help when a player kills you in the open world - /wpp
+## Notes-frFR: Appelle ta guilde à l'aide quand un joueur te tue en monde ouvert - /wpp
+## Notes-deDE: Ruf deine Gilde zu Hilfe, wenn dich ein Spieler in der offenen Welt tötet - /wpp
+## Notes-esES: Pide ayuda a tu hermandad cuando un jugador te mata en el mundo abierto - /wpp
 ## Author: Wafhien
-## Version: 0.1.0
+## Version: 0.1.0-beta
 ## SavedVariables: WorldPvPPoliceDB
 
 # Genere par scripts\new_addon.ps1 le 2026-10-27 - client vise : forever.
-# 120107 = PTR de Retail 12.1.7 (Midnight) : l'addon vise l'API Midnight ET Forever tant que Forever
-# n'est pas sorti (dit par le user le 2026-10-27), pour l'eprouver sur le PTR (deploy.ps1 retailptr).
-# Numero repris du .toc de DevMacro, charge sur ce PTR le 2026-10-27. A retirer apres le lancement si
-# le user le dit.
+# 120107 (PTR de Retail 12.1.7) retire pour la 1re release, sur le mot du user (2026-11-18) : Forever seul.
 # Un .lua ajoute ici : sur Forever, /reload suffit (mesure le 2026-09-26) ; sur l'Era il fallait
 # relancer le client. Un addon TOUT NEUF dans le dossier demande toujours de relancer le client.
 
